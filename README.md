@@ -1,36 +1,123 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Fantasy Hockey Tools
+
+A set of tools for fantasy hockey managers. Currently live: the **Draft Assistant**.
 
 ## Getting Started
 
-First, run the development server:
-
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Draft Assistant
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+At `/draft`. Workflow:
 
-## Learn More
+1. **Import a ranking** — upload a CSV of your player rankings (or a projections
+   export) and map its columns to the app's fields. Common header names (`Name`,
+   `Team`, `Pos`, `Rank`, `ADP`, `G`, ...) are auto-detected. Only a name column is
+   required; if there's no `Rank` column, the row order in your file is used as the
+   ranking. Grab the "Download an example CSV" link on the upload screen if you want
+   a template to start from.
+2. **Set league settings** — team count, your team, roster slots, draft rounds.
+3. **Draft live** — the Cheat Sheet shows players in ranked order. Click "Draft" as
+   picks happen (yours or opponents') to advance the snake draft board. My Team and
+   Pick Suggestions update as you go. Its **Schedule** column shows a Low/Med/High
+   badge per player for how much their team's schedule overlaps with players you've
+   *already rostered at a shared position* (dual/tri-eligible players are checked
+   against all of their positions, and UTIL counts too) — hover a badge to see which
+   of your teams it's comparing against. Nothing rostered at a shared position yet?
+   Always Low. This resets to 0 relative to your current roster, not a fixed
+   per-team stat, so it's most useful once you've got a few picks in at a position.
+4. **Schedule tab** — shows which teams play the most on league-wide "off-nights"
+   (light game-volume dates), pulled live from the NHL API — useful for
+   streaming-friendly picks late in the draft.
+5. **Schedule Fit tab** — pick a position, and it ranks the remaining players there
+   by how much their team's schedule overlaps with your already-rostered players at
+   that same position (computed live from the full NHL season schedule, same source
+   as the Schedule tab). Lower overlap means more distinct game-days covered if
+   you're rostering multiple players at that spot — useful for deciding between two
+   similarly-ranked players at a thin position.
 
-To learn more about Next.js, take a look at the following resources:
+Stat projections and scoring are optional and layered on top: if your CSV also
+includes stat columns (goals, assists, etc.), configure points-per-stat under
+Settings and the Cheat Sheet switches to ranking by computed Fantasy Points and
+Value Over Replacement (VOR) instead, with auto-generated tiers.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+All draft state (players, scoring, picks) persists to `localStorage`, so a page
+refresh mid-draft won't lose anything. Use "Reset draft picks" or "Clear all players"
+in Settings to start over.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### CSV format
 
-## Deploy on Vercel
+One row per player. At minimum needs a name column; team, position, rank, ADP, and
+stat columns are all optional and mapped manually on import. See `src/lib/csv.ts`
+(`FIELD_ALIASES`) for the column keys recognized out of the box — you can add any
+other stat as a custom scoring entry.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### Yahoo positions (optional)
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+If your ranking CSV's positions don't exactly match Yahoo's fantasy eligibility
+(e.g. a dual-eligible C/LW player), the app can apply Yahoo's own position data
+automatically on every import - no login, no per-user step, for anyone using the
+app. This comes from `src/data/yahoo-positions.json`, a bundled dataset built once
+(and refreshable anytime) from a CSV of Yahoo player data:
+
+```bash
+npm run build:yahoo-positions -- path/to/your-file.csv
+```
+
+It auto-detects the Name/Position/Team columns (same alias matching as the main
+ranking import - see `src/lib/csv.ts`) and writes `src/data/yahoo-positions.json`.
+Since positions rarely change mid-season, you'd typically only need to do this once
+before drafting. For one-off touch-ups afterward (a player who was missed, or whose
+eligibility changed), Settings also has a **manual paste** box: copy a small
+Name + Position table and paste it in to update just those players in your current
+session (this one doesn't touch the bundled file).
+
+If a player's name in your ranking CSV doesn't match the bundled dataset (different
+spelling, nickname, etc.), positions just won't be applied for them - no error, they
+keep whatever position was in your CSV. Tell me the mismatched name pairs and I can
+add them as aliases in `src/data/yahoo-positions.json`.
+
+### ADP (optional)
+
+Same idea as positions, for Average Draft Position: `src/data/adp.json`, built from a
+Name,ADP CSV via:
+
+```bash
+npm run build:adp -- path/to/your-file.csv
+```
+
+Unlike positions (which always override), this only *fills in* ADP for players who
+don't already have one from their own ranking CSV - it won't clobber ADP you already
+imported. Rows with a non-numeric value (e.g. "N/A" for undrafted players) are
+skipped automatically.
+
+Both datasets use the same accent/case/whitespace-insensitive name matching, and
+Settings shows how many players are covered by each.
+
+### Comparing multiple ranking sources (optional)
+
+Beyond your main imported list, Settings has an **Additional Ranking Sources** box
+for pasting in other rankings (a friend's list, another site's rankings) purely to
+compare - paste Name + Rank rows, give it a label, and it shows up as its own column
+on the Cheat Sheet, matched to your main list by name. An **Avg Rank** column also
+appears, averaging each player's own rank plus every source that has them (so a
+player only one source ranked still just shows their own rank - the average isn't
+dragged down by sources that don't cover them). Unlike the bundled Yahoo/ADP
+datasets, these live in `localStorage` with the rest of your draft state, not a file
+in the repo - add or remove them anytime per session.
+
+## Stack
+
+Next.js (App Router) + TypeScript + Tailwind CSS, Zustand for state (persisted to
+`localStorage`), Papaparse for CSV import. No backend/database — everything runs
+client-side except the NHL schedule fetch (`/api/schedule`), which is a small
+server route with in-memory caching.
+
+## Roadmap
+
+- Weekly streamer suggestions
+- Trade recommender

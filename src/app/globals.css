@@ -1,26 +1,38 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+@theme {
+  /* Rink Sheet palette — cool ice ground, blue-line / red-line accents */
+  --color-ice: #eef3f8;
+  --color-ice-2: #e3ecf3;
+  --color-surface: #ffffff;
+  --color-stripe: #e3ecf3;
+  --color-ink: #0f2233;
+  --color-ink-dim: #5c7387;
+  --color-ink-faint: #93a6b8;
+  --color-line: #d3dfe8;
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+  --color-rink-blue: #1e5aa8;
+  --color-rink-blue-dark: #164a8c;
+  --color-rink-blue-light: #dbe8f2;
+  --color-rink-red: #c8102e;
+  --color-rink-red-light: #f9dde1;
+  --color-rink-gold: #a4741f;
+  --color-rink-gold-light: #f6ecd8;
+  --color-rink-green: #1f7a4c;
+  --color-rink-green-light: #e3f3e9;
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  /* Position badges (draft board) - matches a common fantasy-draft-tool
+     color convention so it reads at a glance without a legend. */
+  --color-pos-c: #f2994a;
+  --color-pos-lw: #f48fb1;
+  --color-pos-rw: #5b9bd5;
+  --color-pos-d: #b39ddb;
+  --color-pos-g: #f2c94c;
+
+  --font-display: var(--font-big-shoulders), "Arial Narrow", sans-serif;
+  --font-sans: var(--font-plex-sans), system-ui, sans-serif;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-variant-numeric: tabular-nums;
 }

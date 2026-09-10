@@ -1,0 +1,3915 @@
+{
+  "Connor McDavid": {
+    "team": "",
+    "positions": [
+      "C"
+    ]
+  },
+  "Nikita Kucherov": {
+    "team": "",
+    "positions": [
+      "RW"
+    ]
+  },
+  "Nathan MacKinnon": {
+    "team": "",
+    "positions": [
+      "C"
+    ]
+  },
+  "Leon Draisaitl": {
+    "team": "",
+    "positions": [
+      "C",
+      "LW"
+    ]
+  },
+  "Macklin Celebrini": {
+    "team": "",
+    "positions": [
+      "C"
+    ]
+  },
+  "David Pastrnak": {
+    "team": "",
+    "positions": [
+      "RW"
+    ]
+  },
+  "Jack Hughes": {
+    "team": "",
+    "positions": [
+      "C",
+      "LW"
+    ]
+  },
+  "Jack Eichel": {
+    "team": "",
+    "positions": [
+      "C"
+    ]
+  },
+  "Kirill Kaprizov": {
+    "team": "",
+    "positions": [
+      "LW"
+    ]
+  },
+  "Martin Necas": {
+    "team": "",
+    "positions": [
+      "RW"
+    ]
+  },
+  "William Nylander": {
+    "team": "",
+    "positions": [
+      "C",
+      "RW"
+    ]
+  },
+  "Jason Robertson": {
+    "team": "",
+    "positions": [
+      "LW",
+      "RW"
+    ]
+  },
+  "Artemi Panarin": {
+    "team": "",
+    "positions": [
+      "LW"
+    ]
+  },
+  "Mikko Rantanen": {
+    "team": "",
+    "positions": [
+      "LW",
+      "RW"
+    ]
+  },
+  "Quinn Hughes": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Nick Suzuki": {
+    "team": "",
+    "positions": [
+      "C"
+    ]
+  },
+  "Mark Scheifele": {
+    "team": "",
+    "positions": [
+      "C"
+    ]
+  },
+  "Kyle Connor": {
+    "team": "",
+    "positions": [
+      "LW"
+    ]
+  },
+  "Auston Matthews": {
+    "team": "",
+    "positions": [
+      "C"
+    ]
+  },
+  "Mitch Marner": {
+    "team": "",
+    "positions": [
+      "C",
+      "LW",
+      "RW"
+    ]
+  },
+  "Matthew Tkachuk": {
+    "team": "",
+    "positions": [
+      "LW",
+      "RW"
+    ]
+  },
+  "Matt Boldy": {
+    "team": "",
+    "positions": [
+      "LW",
+      "RW"
+    ]
+  },
+  "Wyatt Johnston": {
+    "team": "",
+    "positions": [
+      "C",
+      "RW"
+    ]
+  },
+  "Connor Bedard": {
+    "team": "",
+    "positions": [
+      "C",
+      "RW"
+    ]
+  },
+  "Cale Makar": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Sidney Crosby": {
+    "team": "",
+    "positions": [
+      "C"
+    ]
+  },
+  "Mark Stone": {
+    "team": "",
+    "positions": [
+      "RW"
+    ]
+  },
+  "Clayton Keller": {
+    "team": "",
+    "positions": [
+      "LW",
+      "RW"
+    ]
+  },
+  "Aleksander Barkov": {
+    "team": "",
+    "positions": [
+      "C"
+    ]
+  },
+  "Zach Werenski": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Robert Thomas": {
+    "team": "",
+    "positions": [
+      "C"
+    ]
+  },
+  "Evan Bouchard": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Leo Carlsson": {
+    "team": "",
+    "positions": [
+      "C"
+    ]
+  },
+  "Brandon Hagel": {
+    "team": "",
+    "positions": [
+      "LW",
+      "RW"
+    ]
+  },
+  "Jake Guentzel": {
+    "team": "",
+    "positions": [
+      "LW",
+      "RW"
+    ]
+  },
+  "Sebastian Aho": {
+    "team": "",
+    "positions": [
+      "C"
+    ]
+  },
+  "Lucas Raymond": {
+    "team": "",
+    "positions": [
+      "RW"
+    ]
+  },
+  "Tage Thompson": {
+    "team": "",
+    "positions": [
+      "C",
+      "RW"
+    ]
+  },
+  "Sam Reinhart": {
+    "team": "",
+    "positions": [
+      "RW"
+    ]
+  },
+  "Jesper Bratt": {
+    "team": "",
+    "positions": [
+      "LW",
+      "RW"
+    ]
+  },
+  "Cole Caufield": {
+    "team": "",
+    "positions": [
+      "LW",
+      "RW"
+    ]
+  },
+  "Cutter Gauthier": {
+    "team": "",
+    "positions": [
+      "C",
+      "LW",
+      "RW"
+    ]
+  },
+  "Lane Hutson": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Dylan Holloway": {
+    "team": "",
+    "positions": [
+      "C",
+      "LW"
+    ]
+  },
+  "Adam Fox": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Seth Jarvis": {
+    "team": "",
+    "positions": [
+      "LW",
+      "RW"
+    ]
+  },
+  "Alex DeBrincat": {
+    "team": "",
+    "positions": [
+      "LW",
+      "RW"
+    ]
+  },
+  "Dylan Guenther": {
+    "team": "",
+    "positions": [
+      "LW",
+      "RW"
+    ]
+  },
+  "Logan Cooley": {
+    "team": "",
+    "positions": [
+      "C"
+    ]
+  },
+  "Filip Forsberg": {
+    "team": "",
+    "positions": [
+      "LW"
+    ]
+  },
+  "Kirill Marchenko": {
+    "team": "",
+    "positions": [
+      "RW"
+    ]
+  },
+  "Roope Hintz": {
+    "team": "",
+    "positions": [
+      "C"
+    ]
+  },
+  "Adrian Kempe": {
+    "team": "",
+    "positions": [
+      "RW"
+    ]
+  },
+  "Nico Hischier": {
+    "team": "",
+    "positions": [
+      "C"
+    ]
+  },
+  "Nikolaj Ehlers": {
+    "team": "",
+    "positions": [
+      "LW"
+    ]
+  },
+  "Mathew Barzal": {
+    "team": "",
+    "positions": [
+      "C",
+      "RW"
+    ]
+  },
+  "Mika Zibanejad": {
+    "team": "",
+    "positions": [
+      "C",
+      "RW"
+    ]
+  },
+  "Dylan Larkin": {
+    "team": "",
+    "positions": [
+      "C"
+    ]
+  },
+  "Brayden Point": {
+    "team": "",
+    "positions": [
+      "C"
+    ]
+  },
+  "Will Smith": {
+    "team": "",
+    "positions": [
+      "LW",
+      "RW"
+    ]
+  },
+  "Rasmus Dahlin": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "J.T. Miller": {
+    "team": "",
+    "positions": [
+      "C",
+      "LW",
+      "RW"
+    ]
+  },
+  "Porter Martone": {
+    "team": "",
+    "positions": [
+      "RW"
+    ]
+  },
+  "Bryan Rust": {
+    "team": "",
+    "positions": [
+      "RW"
+    ]
+  },
+  "Gabriel Vilardi": {
+    "team": "",
+    "positions": [
+      "C",
+      "RW"
+    ]
+  },
+  "Ivan Demidov": {
+    "team": "",
+    "positions": [
+      "RW"
+    ]
+  },
+  "Anton Frondell": {
+    "team": "",
+    "positions": [
+      "C"
+    ]
+  },
+  "Andrei Svechnikov": {
+    "team": "",
+    "positions": [
+      "LW",
+      "RW"
+    ]
+  },
+  "Evgeni Malkin": {
+    "team": "",
+    "positions": [
+      "C",
+      "LW",
+      "RW"
+    ]
+  },
+  "Travis Konecny": {
+    "team": "",
+    "positions": [
+      "LW",
+      "RW"
+    ]
+  },
+  "Matthew Knies": {
+    "team": "",
+    "positions": [
+      "LW",
+      "RW"
+    ]
+  },
+  "Juraj Slafkovsky": {
+    "team": "",
+    "positions": [
+      "LW",
+      "RW"
+    ]
+  },
+  "Adam Fantilli": {
+    "team": "",
+    "positions": [
+      "C"
+    ]
+  },
+  "Bo Horvat": {
+    "team": "",
+    "positions": [
+      "C"
+    ]
+  },
+  "Elias Pettersson": {
+    "team": "",
+    "positions": [
+      "C"
+    ]
+  },
+  "Beckett Sennecke": {
+    "team": "",
+    "positions": [
+      "RW"
+    ]
+  },
+  "Dylan Strome": {
+    "team": "",
+    "positions": [
+      "C"
+    ]
+  },
+  "Matthew Schaefer": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Jimmy Snuggerud": {
+    "team": "",
+    "positions": [
+      "RW"
+    ]
+  },
+  "Brady Tkachuk": {
+    "team": "",
+    "positions": [
+      "C",
+      "LW"
+    ]
+  },
+  "Troy Terry": {
+    "team": "",
+    "positions": [
+      "RW"
+    ]
+  },
+  "Morgan Geekie": {
+    "team": "",
+    "positions": [
+      "C",
+      "LW",
+      "RW"
+    ]
+  },
+  "Pavel Dorofeyev": {
+    "team": "",
+    "positions": [
+      "LW",
+      "RW"
+    ]
+  },
+  "Shea Theodore": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Zach Hyman": {
+    "team": "",
+    "positions": [
+      "LW",
+      "RW"
+    ]
+  },
+  "Drake Batherson": {
+    "team": "",
+    "positions": [
+      "LW",
+      "RW"
+    ]
+  },
+  "John Tavares": {
+    "team": "",
+    "positions": [
+      "C"
+    ]
+  },
+  "Ryan O'Reilly": {
+    "team": "",
+    "positions": [
+      "C"
+    ]
+  },
+  "Marco Rossi": {
+    "team": "",
+    "positions": [
+      "C"
+    ]
+  },
+  "Trevor Zegras": {
+    "team": "",
+    "positions": [
+      "C",
+      "LW",
+      "RW"
+    ]
+  },
+  "Rickard Rakell": {
+    "team": "",
+    "positions": [
+      "C",
+      "LW",
+      "RW"
+    ]
+  },
+  "Nick Schmaltz": {
+    "team": "",
+    "positions": [
+      "C",
+      "RW"
+    ]
+  },
+  "Quinton Byfield": {
+    "team": "",
+    "positions": [
+      "C"
+    ]
+  },
+  "Tomas Hertl": {
+    "team": "",
+    "positions": [
+      "C",
+      "LW"
+    ]
+  },
+  "Jonah Gadjovich": {
+    "team": "",
+    "positions": [
+      "LW"
+    ]
+  },
+  "Michael Misa": {
+    "team": "",
+    "positions": [
+      "C"
+    ]
+  },
+  "Steven Stamkos": {
+    "team": "",
+    "positions": [
+      "C",
+      "RW"
+    ]
+  },
+  "Jared McCann": {
+    "team": "",
+    "positions": [
+      "C",
+      "LW"
+    ]
+  },
+  "Tom Wilson": {
+    "team": "",
+    "positions": [
+      "RW"
+    ]
+  },
+  "Darren Raddysh": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Alex Tuch": {
+    "team": "",
+    "positions": [
+      "LW",
+      "RW"
+    ]
+  },
+  "Joel Eriksson Ek": {
+    "team": "",
+    "positions": [
+      "C"
+    ]
+  },
+  "JJ Peterka": {
+    "team": "",
+    "positions": [
+      "LW",
+      "RW"
+    ]
+  },
+  "Brad Marchand": {
+    "team": "",
+    "positions": [
+      "LW",
+      "RW"
+    ]
+  },
+  "Valeri Nichushkin": {
+    "team": "",
+    "positions": [
+      "LW",
+      "RW"
+    ]
+  },
+  "Roman Josi": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Josh Morrissey": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "William Eklund": {
+    "team": "",
+    "positions": [
+      "LW",
+      "RW"
+    ]
+  },
+  "Matvei Gridin": {
+    "team": "",
+    "positions": [
+      "LW",
+      "RW"
+    ]
+  },
+  "Jake Sanderson": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Pavel Zacha": {
+    "team": "",
+    "positions": [
+      "C",
+      "LW"
+    ]
+  },
+  "Matvei Michkov": {
+    "team": "",
+    "positions": [
+      "LW",
+      "RW"
+    ]
+  },
+  "Moritz Seider": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Luke Evangelista": {
+    "team": "",
+    "positions": [
+      "LW",
+      "RW"
+    ]
+  },
+  "Charlie McAvoy": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Brock Boeser": {
+    "team": "",
+    "positions": [
+      "LW",
+      "RW"
+    ]
+  },
+  "Ryan Nugent-Hopkins": {
+    "team": "",
+    "positions": [
+      "C",
+      "LW"
+    ]
+  },
+  "Zach Benson": {
+    "team": "",
+    "positions": [
+      "LW"
+    ]
+  },
+  "Miro Heiskanen": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Mikael Granlund": {
+    "team": "",
+    "positions": [
+      "C",
+      "LW"
+    ]
+  },
+  "Jordan Kyrou": {
+    "team": "",
+    "positions": [
+      "RW"
+    ]
+  },
+  "Mason McTavish": {
+    "team": "",
+    "positions": [
+      "C"
+    ]
+  },
+  "Brock Nelson": {
+    "team": "",
+    "positions": [
+      "C"
+    ]
+  },
+  "Kevin Fiala": {
+    "team": "",
+    "positions": [
+      "LW"
+    ]
+  },
+  "Dylan Cozens": {
+    "team": "",
+    "positions": [
+      "C"
+    ]
+  },
+  "Mikhail Sergachev": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Jackson LaCombe": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Pierre-Luc Dubois": {
+    "team": "",
+    "positions": [
+      "C",
+      "LW"
+    ]
+  },
+  "Viktor Arvidsson": {
+    "team": "",
+    "positions": [
+      "LW",
+      "RW"
+    ]
+  },
+  "Nazem Kadri": {
+    "team": "",
+    "positions": [
+      "C",
+      "LW"
+    ]
+  },
+  "Jakob Chychrun": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Aliaksei Protas": {
+    "team": "",
+    "positions": [
+      "LW",
+      "RW"
+    ]
+  },
+  "Matt Duchene": {
+    "team": "",
+    "positions": [
+      "C",
+      "RW"
+    ]
+  },
+  "Teddy Blueger": {
+    "team": "",
+    "positions": [
+      "C"
+    ]
+  },
+  "Tyler Bertuzzi": {
+    "team": "",
+    "positions": [
+      "LW",
+      "RW"
+    ]
+  },
+  "Josh Doan": {
+    "team": "",
+    "positions": [
+      "RW"
+    ]
+  },
+  "Matty Beniers": {
+    "team": "",
+    "positions": [
+      "C"
+    ]
+  },
+  "Mats Zuccarello": {
+    "team": "",
+    "positions": [
+      "RW"
+    ]
+  },
+  "Alex Ovechkin": {
+    "team": "",
+    "positions": [
+      "LW",
+      "RW"
+    ]
+  },
+  "Timo Meier": {
+    "team": "",
+    "positions": [
+      "LW",
+      "RW"
+    ]
+  },
+  "Erik Karlsson": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Anthony Cirelli": {
+    "team": "",
+    "positions": [
+      "C"
+    ]
+  },
+  "Cole Hutson": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Mason Marchment": {
+    "team": "",
+    "positions": [
+      "LW"
+    ]
+  },
+  "Shayne Gostisbehere": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Ivan Barbashev": {
+    "team": "",
+    "positions": [
+      "LW"
+    ]
+  },
+  "Matt Coronato": {
+    "team": "",
+    "positions": [
+      "RW"
+    ]
+  },
+  "Sam Bennett": {
+    "team": "",
+    "positions": [
+      "C"
+    ]
+  },
+  "Frank Nazar": {
+    "team": "",
+    "positions": [
+      "C"
+    ]
+  },
+  "Cole Perfetti": {
+    "team": "",
+    "positions": [
+      "LW",
+      "RW"
+    ]
+  },
+  "Ryan Leonard": {
+    "team": "",
+    "positions": [
+      "RW"
+    ]
+  },
+  "John Carlson": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Shane Pinto": {
+    "team": "",
+    "positions": [
+      "C"
+    ]
+  },
+  "Jackson Blake": {
+    "team": "",
+    "positions": [
+      "RW"
+    ]
+  },
+  "Tyler Seguin": {
+    "team": "",
+    "positions": [
+      "C",
+      "RW"
+    ]
+  },
+  "Anton Lundell": {
+    "team": "",
+    "positions": [
+      "C"
+    ]
+  },
+  "Jack Quinn": {
+    "team": "",
+    "positions": [
+      "RW"
+    ]
+  },
+  "Ryan Hartman": {
+    "team": "",
+    "positions": [
+      "C",
+      "RW"
+    ]
+  },
+  "Jordan Eberle": {
+    "team": "",
+    "positions": [
+      "RW"
+    ]
+  },
+  "Ryan McLeod": {
+    "team": "",
+    "positions": [
+      "C"
+    ]
+  },
+  "Carter Verhaeghe": {
+    "team": "",
+    "positions": [
+      "LW"
+    ]
+  },
+  "Logan Stankoven": {
+    "team": "",
+    "positions": [
+      "C",
+      "RW"
+    ]
+  },
+  "Bowen Byram": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Vincent Trocheck": {
+    "team": "",
+    "positions": [
+      "C"
+    ]
+  },
+  "Artturi Lehkonen": {
+    "team": "",
+    "positions": [
+      "LW",
+      "RW"
+    ]
+  },
+  "Chandler Stephenson": {
+    "team": "",
+    "positions": [
+      "C"
+    ]
+  },
+  "Pavel Buchnevich": {
+    "team": "",
+    "positions": [
+      "C",
+      "LW",
+      "RW"
+    ]
+  },
+  "Calum Ritchie": {
+    "team": "",
+    "positions": [
+      "C",
+      "RW"
+    ]
+  },
+  "Igor Chernyshov": {
+    "team": "",
+    "positions": [
+      "LW",
+      "RW"
+    ]
+  },
+  "Anthony Mantha": {
+    "team": "",
+    "positions": [
+      "LW",
+      "RW"
+    ]
+  },
+  "Filip Hronek": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Kyle Palmieri": {
+    "team": "",
+    "positions": [
+      "RW"
+    ]
+  },
+  "Jonathan Huberdeau": {
+    "team": "",
+    "positions": [
+      "LW",
+      "RW"
+    ]
+  },
+  "Owen Tippett": {
+    "team": "",
+    "positions": [
+      "LW",
+      "RW"
+    ]
+  },
+  "Vince Dunn": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Simon Holmstrom": {
+    "team": "",
+    "positions": [
+      "LW",
+      "RW"
+    ]
+  },
+  "Yegor Chinakhov": {
+    "team": "",
+    "positions": [
+      "LW",
+      "RW"
+    ]
+  },
+  "Josh Norris": {
+    "team": "",
+    "positions": [
+      "C"
+    ]
+  },
+  "Thomas Harley": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Jake DeBrusk": {
+    "team": "",
+    "positions": [
+      "LW",
+      "RW"
+    ]
+  },
+  "Noah Dobson": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Kaapo Kakko": {
+    "team": "",
+    "positions": [
+      "RW"
+    ]
+  },
+  "Chris Kreider": {
+    "team": "",
+    "positions": [
+      "LW"
+    ]
+  },
+  "Taylor Hall": {
+    "team": "",
+    "positions": [
+      "LW"
+    ]
+  },
+  "Connor McMichael": {
+    "team": "",
+    "positions": [
+      "C",
+      "LW"
+    ]
+  },
+  "Luke Hughes": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Tyson Foerster": {
+    "team": "",
+    "positions": [
+      "LW",
+      "RW"
+    ]
+  },
+  "Brandt Clarke": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Gabe Perreault": {
+    "team": "",
+    "positions": [
+      "RW"
+    ]
+  },
+  "Dmitri Voronkov": {
+    "team": "",
+    "positions": [
+      "LW"
+    ]
+  },
+  "Alex Wennberg": {
+    "team": "",
+    "positions": [
+      "C"
+    ]
+  },
+  "Bobby McMann": {
+    "team": "",
+    "positions": [
+      "LW",
+      "RW"
+    ]
+  },
+  "Victor Hedman": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Mavrik Bourque": {
+    "team": "",
+    "positions": [
+      "C",
+      "RW"
+    ]
+  },
+  "Gabriel Landeskog": {
+    "team": "",
+    "positions": [
+      "LW",
+      "RW"
+    ]
+  },
+  "Charlie Coyle": {
+    "team": "",
+    "positions": [
+      "C"
+    ]
+  },
+  "Brock Faber": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Seth Jones": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Dougie Hamilton": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Zeev Buium": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Will Cuylle": {
+    "team": "",
+    "positions": [
+      "LW",
+      "RW"
+    ]
+  },
+  "Elias Lindholm": {
+    "team": "",
+    "positions": [
+      "C"
+    ]
+  },
+  "Christian Dvorak": {
+    "team": "",
+    "positions": [
+      "C"
+    ]
+  },
+  "Philip Broberg": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Easton Cowan": {
+    "team": "",
+    "positions": [
+      "LW"
+    ]
+  },
+  "Morgan Frost": {
+    "team": "",
+    "positions": [
+      "C"
+    ]
+  },
+  "Andrew Copp": {
+    "team": "",
+    "positions": [
+      "C",
+      "LW"
+    ]
+  },
+  "Casey Mittelstadt": {
+    "team": "",
+    "positions": [
+      "C",
+      "LW"
+    ]
+  },
+  "Dmitry Orlov": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Jiri Kulich": {
+    "team": "",
+    "positions": [
+      "C"
+    ]
+  },
+  "Jake Neighbours": {
+    "team": "",
+    "positions": [
+      "LW",
+      "RW"
+    ]
+  },
+  "Shane Wright": {
+    "team": "",
+    "positions": [
+      "C",
+      "RW"
+    ]
+  },
+  "Thomas Chabot": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Alex Laferriere": {
+    "team": "",
+    "positions": [
+      "C",
+      "LW",
+      "RW"
+    ]
+  },
+  "Thomas Novak": {
+    "team": "",
+    "positions": [
+      "C",
+      "LW"
+    ]
+  },
+  "Jamie Benn": {
+    "team": "",
+    "positions": [
+      "C",
+      "LW",
+      "RW"
+    ]
+  },
+  "Sean Monahan": {
+    "team": "",
+    "positions": [
+      "C"
+    ]
+  },
+  "Jonathan Marchessault": {
+    "team": "",
+    "positions": [
+      "LW",
+      "RW"
+    ]
+  },
+  "Simon Nemec": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Matias Maccelli": {
+    "team": "",
+    "positions": [
+      "LW",
+      "RW"
+    ]
+  },
+  "Owen Power": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Tyler Toffoli": {
+    "team": "",
+    "positions": [
+      "LW",
+      "RW"
+    ]
+  },
+  "Noah Ostlund": {
+    "team": "",
+    "positions": [
+      "C"
+    ]
+  },
+  "Dawson Mercer": {
+    "team": "",
+    "positions": [
+      "C",
+      "RW"
+    ]
+  },
+  "Matt Savoie": {
+    "team": "",
+    "positions": [
+      "C",
+      "RW"
+    ]
+  },
+  "Ben Kindel": {
+    "team": "",
+    "positions": [
+      "C"
+    ]
+  },
+  "Kiefer Sherwood": {
+    "team": "",
+    "positions": [
+      "LW",
+      "RW"
+    ]
+  },
+  "Tristan Luneau": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Joel Farabee": {
+    "team": "",
+    "positions": [
+      "LW",
+      "RW"
+    ]
+  },
+  "Jason Zucker": {
+    "team": "",
+    "positions": [
+      "LW"
+    ]
+  },
+  "Bobby Brink": {
+    "team": "",
+    "positions": [
+      "RW"
+    ]
+  },
+  "Blake Coleman": {
+    "team": "",
+    "positions": [
+      "C",
+      "LW"
+    ]
+  },
+  "Conor Garland": {
+    "team": "",
+    "positions": [
+      "RW"
+    ]
+  },
+  "Jack Roslovic": {
+    "team": "",
+    "positions": [
+      "C",
+      "RW"
+    ]
+  },
+  "Zachary Bolduc": {
+    "team": "",
+    "positions": [
+      "LW",
+      "RW"
+    ]
+  },
+  "Noah Cates": {
+    "team": "",
+    "positions": [
+      "C"
+    ]
+  },
+  "Filip Chytil": {
+    "team": "",
+    "positions": [
+      "C"
+    ]
+  },
+  "William Karlsson": {
+    "team": "",
+    "positions": [
+      "C"
+    ]
+  },
+  "Linus Karlsson": {
+    "team": "",
+    "positions": [
+      "RW"
+    ]
+  },
+  "Brayden Schenn": {
+    "team": "",
+    "positions": [
+      "C",
+      "LW"
+    ]
+  },
+  "Anders Lee": {
+    "team": "",
+    "positions": [
+      "LW"
+    ]
+  },
+  "Yegor Sharangovich": {
+    "team": "",
+    "positions": [
+      "C",
+      "LW",
+      "RW"
+    ]
+  },
+  "Claude Giroux": {
+    "team": "",
+    "positions": [
+      "C",
+      "LW",
+      "RW"
+    ]
+  },
+  "Collin Graf": {
+    "team": "",
+    "positions": [
+      "LW",
+      "RW"
+    ]
+  },
+  "Arseny Gritsyuk": {
+    "team": "",
+    "positions": [
+      "LW",
+      "RW"
+    ]
+  },
+  "Alex Newhook": {
+    "team": "",
+    "positions": [
+      "C",
+      "LW"
+    ]
+  },
+  "Jamie Drysdale": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Kent Johnson": {
+    "team": "",
+    "positions": [
+      "LW",
+      "RW"
+    ]
+  },
+  "Connor Zary": {
+    "team": "",
+    "positions": [
+      "C",
+      "LW",
+      "RW"
+    ]
+  },
+  "Pavel Mintyukov": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Konsta Helenius": {
+    "team": "",
+    "positions": [
+      "C"
+    ]
+  },
+  "K'Andre Miller": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Noah Hanifin": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Mackie Samoskevich": {
+    "team": "",
+    "positions": [
+      "RW"
+    ]
+  },
+  "Teuvo Teravainen": {
+    "team": "",
+    "positions": [
+      "LW",
+      "RW"
+    ]
+  },
+  "Mattias Ekholm": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Ridly Greig": {
+    "team": "",
+    "positions": [
+      "C",
+      "LW",
+      "RW"
+    ]
+  },
+  "Matthew Wood": {
+    "team": "",
+    "positions": [
+      "C",
+      "RW"
+    ]
+  },
+  "Boone Jenner": {
+    "team": "",
+    "positions": [
+      "C",
+      "LW"
+    ]
+  },
+  "Trevor Moore": {
+    "team": "",
+    "positions": [
+      "LW",
+      "RW"
+    ]
+  },
+  "Denton Mateychuk": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Fraser Minten": {
+    "team": "",
+    "positions": [
+      "C"
+    ]
+  },
+  "Justin Faulk": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Lawson Crouse": {
+    "team": "",
+    "positions": [
+      "LW",
+      "RW"
+    ]
+  },
+  "Ross Colton": {
+    "team": "",
+    "positions": [
+      "C",
+      "LW"
+    ]
+  },
+  "Vasily Podkolzin": {
+    "team": "",
+    "positions": [
+      "LW",
+      "RW"
+    ]
+  },
+  "Brett Howden": {
+    "team": "",
+    "positions": [
+      "C",
+      "LW"
+    ]
+  },
+  "Jordan Staal": {
+    "team": "",
+    "positions": [
+      "C"
+    ]
+  },
+  "Cole Sillinger": {
+    "team": "",
+    "positions": [
+      "C",
+      "RW"
+    ]
+  },
+  "Ryan Poehling": {
+    "team": "",
+    "positions": [
+      "C"
+    ]
+  },
+  "Mikael Backlund": {
+    "team": "",
+    "positions": [
+      "C"
+    ]
+  },
+  "Brandon Montour": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Nicholas Robertson": {
+    "team": "",
+    "positions": [
+      "RW"
+    ]
+  },
+  "Marco Kasper": {
+    "team": "",
+    "positions": [
+      "C",
+      "LW"
+    ]
+  },
+  "Alex Bump": {
+    "team": "",
+    "positions": [
+      "LW"
+    ]
+  },
+  "Alex Nikishin": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Oliver Kapanen": {
+    "team": "",
+    "positions": [
+      "C"
+    ]
+  },
+  "Emmitt Finnie": {
+    "team": "",
+    "positions": [
+      "C",
+      "LW"
+    ]
+  },
+  "Oliver Bjorkstrand": {
+    "team": "",
+    "positions": [
+      "RW"
+    ]
+  },
+  "Sean Durzi": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Pius Suter": {
+    "team": "",
+    "positions": [
+      "C",
+      "LW"
+    ]
+  },
+  "Devon Toews": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Connor Brown": {
+    "team": "",
+    "positions": [
+      "RW"
+    ]
+  },
+  "Barrett Hayton": {
+    "team": "",
+    "positions": [
+      "C"
+    ]
+  },
+  "Gage Goncalves": {
+    "team": "",
+    "positions": [
+      "C",
+      "LW"
+    ]
+  },
+  "Simon Edvinsson": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Ryan Donato": {
+    "team": "",
+    "positions": [
+      "C",
+      "LW",
+      "RW"
+    ]
+  },
+  "Brad Lambert": {
+    "team": "",
+    "positions": [
+      "C"
+    ]
+  },
+  "Rasmus Andersson": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Kris Letang": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Michael Amadio": {
+    "team": "",
+    "positions": [
+      "LW",
+      "RW"
+    ]
+  },
+  "Emil Heineman": {
+    "team": "",
+    "positions": [
+      "LW",
+      "RW"
+    ]
+  },
+  "Mattias Samuelsson": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Morgan Rielly": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Ryan Greene": {
+    "team": "",
+    "positions": [
+      "C",
+      "RW"
+    ]
+  },
+  "Artyom Levshunov": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Braeden Bowman": {
+    "team": "",
+    "positions": [
+      "LW",
+      "RW"
+    ]
+  },
+  "Jean-Gabriel Pageau": {
+    "team": "",
+    "positions": [
+      "C"
+    ]
+  },
+  "Jaden Schwartz": {
+    "team": "",
+    "positions": [
+      "C",
+      "LW"
+    ]
+  },
+  "Kirby Dach": {
+    "team": "",
+    "positions": [
+      "C",
+      "RW"
+    ]
+  },
+  "Alex Texier": {
+    "team": "",
+    "positions": [
+      "LW",
+      "RW"
+    ]
+  },
+  "MacKenzie Weegar": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Danila Yurov": {
+    "team": "",
+    "positions": [
+      "C",
+      "RW"
+    ]
+  },
+  "Nick Paul": {
+    "team": "",
+    "positions": [
+      "C",
+      "LW"
+    ]
+  },
+  "John Marino": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Jordan Spence": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Denver Barkey": {
+    "team": "",
+    "positions": [
+      "LW"
+    ]
+  },
+  "Erik Haula": {
+    "team": "",
+    "positions": [
+      "C",
+      "LW"
+    ]
+  },
+  "Gustav Forsling": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Sean Couturier": {
+    "team": "",
+    "positions": [
+      "C"
+    ]
+  },
+  "Travis Sanheim": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Alex Iafallo": {
+    "team": "",
+    "positions": [
+      "LW",
+      "RW"
+    ]
+  },
+  "Nick Lardis": {
+    "team": "",
+    "positions": [
+      "LW"
+    ]
+  },
+  "Brady Skjei": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Nate Danielson": {
+    "team": "",
+    "positions": [
+      "C"
+    ]
+  },
+  "Eetu Luostarinen": {
+    "team": "",
+    "positions": [
+      "LW"
+    ]
+  },
+  "Alex Killorn": {
+    "team": "",
+    "positions": [
+      "LW",
+      "RW"
+    ]
+  },
+  "Damon Severson": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Jonathan Drouin": {
+    "team": "",
+    "positions": [
+      "LW",
+      "RW"
+    ]
+  },
+  "Frank Vatrano": {
+    "team": "",
+    "positions": [
+      "LW",
+      "RW"
+    ]
+  },
+  "Isak Rosen": {
+    "team": "",
+    "positions": [
+      "RW"
+    ]
+  },
+  "Aaron Ekblad": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Berkly Catton": {
+    "team": "",
+    "positions": [
+      "C",
+      "LW"
+    ]
+  },
+  "Dalibor Dvorsky": {
+    "team": "",
+    "positions": [
+      "C"
+    ]
+  },
+  "Noah Laba": {
+    "team": "",
+    "positions": [
+      "C"
+    ]
+  },
+  "Drew O'Connor": {
+    "team": "",
+    "positions": [
+      "LW",
+      "RW"
+    ]
+  },
+  "Ivan Provorov": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Yanni Gourde": {
+    "team": "",
+    "positions": [
+      "C"
+    ]
+  },
+  "Cam Fowler": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Cam York": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Fabian Zetterlund": {
+    "team": "",
+    "positions": [
+      "LW",
+      "RW"
+    ]
+  },
+  "Jake Walman": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Justin Hryckowian": {
+    "team": "",
+    "positions": [
+      "C",
+      "LW"
+    ]
+  },
+  "Tony DeAngelo": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Victor Olofsson": {
+    "team": "",
+    "positions": [
+      "LW",
+      "RW"
+    ]
+  },
+  "Ryan Strome": {
+    "team": "",
+    "positions": [
+      "C"
+    ]
+  },
+  "Liam Ohgren": {
+    "team": "",
+    "positions": [
+      "LW"
+    ]
+  },
+  "Marat Khusnutdinov": {
+    "team": "",
+    "positions": [
+      "C",
+      "LW"
+    ]
+  },
+  "Justin Sourdif": {
+    "team": "",
+    "positions": [
+      "C",
+      "RW"
+    ]
+  },
+  "Jake Evans": {
+    "team": "",
+    "positions": [
+      "C"
+    ]
+  },
+  "Mathieu Olivier": {
+    "team": "",
+    "positions": [
+      "RW"
+    ]
+  },
+  "Drew Doughty": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Tom Willander": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Jack Drury": {
+    "team": "",
+    "positions": [
+      "C"
+    ]
+  },
+  "Patrick Kane": {
+    "team": "",
+    "positions": [
+      "RW"
+    ]
+  },
+  "Warren Foegele": {
+    "team": "",
+    "positions": [
+      "LW",
+      "RW"
+    ]
+  },
+  "Evan Rodrigues": {
+    "team": "",
+    "positions": [
+      "C",
+      "LW",
+      "RW"
+    ]
+  },
+  "Ilya Mikheyev": {
+    "team": "",
+    "positions": [
+      "LW",
+      "RW"
+    ]
+  },
+  "Justin Brazeau": {
+    "team": "",
+    "positions": [
+      "RW"
+    ]
+  },
+  "Oliver Moore": {
+    "team": "",
+    "positions": [
+      "C",
+      "RW"
+    ]
+  },
+  "Sam Malinski": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Nicolas Roy": {
+    "team": "",
+    "positions": [
+      "C",
+      "RW"
+    ]
+  },
+  "Charle-Edouard D'Astous": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Sam Steel": {
+    "team": "",
+    "positions": [
+      "C",
+      "LW"
+    ]
+  },
+  "Sam Dickinson": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Max Domi": {
+    "team": "",
+    "positions": [
+      "C",
+      "LW"
+    ]
+  },
+  "Peyton Krebs": {
+    "team": "",
+    "positions": [
+      "C",
+      "LW"
+    ]
+  },
+  "Max Shabanov": {
+    "team": "",
+    "positions": [
+      "RW"
+    ]
+  },
+  "J.T. Compher": {
+    "team": "",
+    "positions": [
+      "C"
+    ]
+  },
+  "Oliver Ekman-Larsson": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Jordan Martinook": {
+    "team": "",
+    "positions": [
+      "LW",
+      "RW"
+    ]
+  },
+  "Neal Pionk": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Hampus Lindholm": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Adam Lowry": {
+    "team": "",
+    "positions": [
+      "C"
+    ]
+  },
+  "Vladislav Gavrikov": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Dominic James": {
+    "team": "",
+    "positions": [
+      "C"
+    ]
+  },
+  "Janis Moser": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Nils Hoglander": {
+    "team": "",
+    "positions": [
+      "LW"
+    ]
+  },
+  "Ryan McDonagh": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Cody Glass": {
+    "team": "",
+    "positions": [
+      "C",
+      "RW"
+    ]
+  },
+  "Mason Lohrei": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Jonathan Lekkerimaki": {
+    "team": "",
+    "positions": [
+      "RW"
+    ]
+  },
+  "Jaccob Slavin": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Josh Manson": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Mike Matheson": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Olen Zellweger": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Arttu Hyry": {
+    "team": "",
+    "positions": [
+      "C",
+      "RW"
+    ]
+  },
+  "Parker Kelly": {
+    "team": "",
+    "positions": [
+      "C",
+      "LW"
+    ]
+  },
+  "Darnell Nurse": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Sam Rinzel": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Filip Hallander": {
+    "team": "",
+    "positions": [
+      "LW"
+    ]
+  },
+  "Jack McBain": {
+    "team": "",
+    "positions": [
+      "C",
+      "LW"
+    ]
+  },
+  "Connor Dewar": {
+    "team": "",
+    "positions": [
+      "C",
+      "LW"
+    ]
+  },
+  "Esa Lindell": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Martin Fehervary": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Michael Carcone": {
+    "team": "",
+    "positions": [
+      "LW"
+    ]
+  },
+  "Alex Kerfoot": {
+    "team": "",
+    "positions": [
+      "C",
+      "LW",
+      "RW"
+    ]
+  },
+  "Scott Laughton": {
+    "team": "",
+    "positions": [
+      "C",
+      "LW"
+    ]
+  },
+  "Jonatan Berggren": {
+    "team": "",
+    "positions": [
+      "RW"
+    ]
+  },
+  "Rasmus Sandin": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Blake Lizotte": {
+    "team": "",
+    "positions": [
+      "C"
+    ]
+  },
+  "Otto Stenberg": {
+    "team": "",
+    "positions": [
+      "C"
+    ]
+  },
+  "Pontus Holmberg": {
+    "team": "",
+    "positions": [
+      "RW"
+    ]
+  },
+  "Zayne Parekh": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Alex Steeves": {
+    "team": "",
+    "positions": [
+      "C",
+      "LW"
+    ]
+  },
+  "Ethen Frank": {
+    "team": "",
+    "positions": [
+      "RW"
+    ]
+  },
+  "Frederick Gaudreau": {
+    "team": "",
+    "positions": [
+      "C",
+      "RW"
+    ]
+  },
+  "Jake McCabe": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Vladislav Namestnikov": {
+    "team": "",
+    "positions": [
+      "C",
+      "LW"
+    ]
+  },
+  "Drew Helleson": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Dylan Samberg": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Phillip Danault": {
+    "team": "",
+    "positions": [
+      "C"
+    ]
+  },
+  "Morgan Barron": {
+    "team": "",
+    "positions": [
+      "C",
+      "LW"
+    ]
+  },
+  "Theo Lindstein": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Kaedan Korczak": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Tye Kartye": {
+    "team": "",
+    "positions": [
+      "LW"
+    ]
+  },
+  "Max Sasson": {
+    "team": "",
+    "positions": [
+      "C",
+      "LW"
+    ]
+  },
+  "Nino Niederreiter": {
+    "team": "",
+    "positions": [
+      "LW",
+      "RW"
+    ]
+  },
+  "Kaiden Guhle": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Adam Klapka": {
+    "team": "",
+    "positions": [
+      "RW"
+    ]
+  },
+  "Marcus Pettersson": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Samuel Girard": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Artem Zub": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Corey Perry": {
+    "team": "",
+    "positions": [
+      "RW"
+    ]
+  },
+  "Josh Samanski": {
+    "team": "",
+    "positions": [
+      "C"
+    ]
+  },
+  "Michael Kesselring": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Andre Burakovsky": {
+    "team": "",
+    "positions": [
+      "LW",
+      "RW"
+    ]
+  },
+  "Colton Parayko": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Matt Roy": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Sean Walker": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Conor Geekie": {
+    "team": "",
+    "positions": [
+      "C"
+    ]
+  },
+  "Jacob Trouba": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Ryker Evans": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Jonas Brodin": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Lenni Hameenaho": {
+    "team": "",
+    "positions": [
+      "RW"
+    ]
+  },
+  "Daniil But": {
+    "team": "",
+    "positions": [
+      "LW",
+      "RW"
+    ]
+  },
+  "Dakota Joshua": {
+    "team": "",
+    "positions": [
+      "C",
+      "LW"
+    ]
+  },
+  "Brent Burns": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Alex Vlasic": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Adam Gaudette": {
+    "team": "",
+    "positions": [
+      "C",
+      "RW"
+    ]
+  },
+  "Alex Turcotte": {
+    "team": "",
+    "positions": [
+      "C",
+      "LW"
+    ]
+  },
+  "Louis Crevier": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Hendrix Lapierre": {
+    "team": "",
+    "positions": [
+      "C"
+    ]
+  },
+  "Kasperi Kapanen": {
+    "team": "",
+    "positions": [
+      "RW"
+    ]
+  },
+  "Isaac Howard": {
+    "team": "",
+    "positions": [
+      "LW"
+    ]
+  },
+  "Mikey Anderson": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Michael Eyssimont": {
+    "team": "",
+    "positions": [
+      "LW"
+    ]
+  },
+  "Elmer Soderblom": {
+    "team": "",
+    "positions": [
+      "LW",
+      "RW"
+    ]
+  },
+  "Kevin Bahl": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Josh Anderson": {
+    "team": "",
+    "positions": [
+      "RW"
+    ]
+  },
+  "Anthony Duclair": {
+    "team": "",
+    "positions": [
+      "LW"
+    ]
+  },
+  "Martin Pospisil": {
+    "team": "",
+    "positions": [
+      "C",
+      "RW"
+    ]
+  },
+  "Andrew Mangiapane": {
+    "team": "",
+    "positions": [
+      "LW",
+      "RW"
+    ]
+  },
+  "Zachary L'Heureux": {
+    "team": "",
+    "positions": [
+      "LW"
+    ]
+  },
+  "Jason Dickinson": {
+    "team": "",
+    "positions": [
+      "C"
+    ]
+  },
+  "Rasmus Ristolainen": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Alex Holtz": {
+    "team": "",
+    "positions": [
+      "RW"
+    ]
+  },
+  "Adam Wilsby": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Ryan Pulock": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Eric Robinson": {
+    "team": "",
+    "positions": [
+      "LW",
+      "RW"
+    ]
+  },
+  "Nick Perbix": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Joel Armia": {
+    "team": "",
+    "positions": [
+      "RW"
+    ]
+  },
+  "Aatu Raty": {
+    "team": "",
+    "positions": [
+      "C"
+    ]
+  },
+  "Ryan Shea": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Alex Romanov": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Colton Dach": {
+    "team": "",
+    "positions": [
+      "C",
+      "LW"
+    ]
+  },
+  "Taylor Raddysh": {
+    "team": "",
+    "positions": [
+      "RW"
+    ]
+  },
+  "Michael Rasmussen": {
+    "team": "",
+    "positions": [
+      "C",
+      "LW"
+    ]
+  },
+  "Matthew Robertson": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Hunter Brzustewicz": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Cole Koepke": {
+    "team": "",
+    "positions": [
+      "LW"
+    ]
+  },
+  "Wyatt Kaiser": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Nikita Zadorov": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Ben Meyers": {
+    "team": "",
+    "positions": [
+      "C",
+      "LW"
+    ]
+  },
+  "Mark Kastelic": {
+    "team": "",
+    "positions": [
+      "C",
+      "RW"
+    ]
+  },
+  "Alex Carrier": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Anthony Beauvillier": {
+    "team": "",
+    "positions": [
+      "LW"
+    ]
+  },
+  "Keegan Kolesar": {
+    "team": "",
+    "positions": [
+      "RW"
+    ]
+  },
+  "Marcus Foligno": {
+    "team": "",
+    "positions": [
+      "LW"
+    ]
+  },
+  "Nick Foligno": {
+    "team": "",
+    "positions": [
+      "C",
+      "LW"
+    ]
+  },
+  "Maveric Lamoureux": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Nils Lundkvist": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Jared Spurgeon": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Nikita Grebenkin": {
+    "team": "",
+    "positions": [
+      "LW",
+      "RW"
+    ]
+  },
+  "Yakov Trenin": {
+    "team": "",
+    "positions": [
+      "C",
+      "LW",
+      "RW"
+    ]
+  },
+  "Braden Schneider": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Mark Jankowski": {
+    "team": "",
+    "positions": [
+      "C"
+    ]
+  },
+  "William Carrier": {
+    "team": "",
+    "positions": [
+      "LW"
+    ]
+  },
+  "Fedor Svechkov": {
+    "team": "",
+    "positions": [
+      "C"
+    ]
+  },
+  "Logan Mailloux": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "William Borgen": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Stefan Noesen": {
+    "team": "",
+    "positions": [
+      "RW"
+    ]
+  },
+  "Tanner Jeannot": {
+    "team": "",
+    "positions": [
+      "LW",
+      "RW"
+    ]
+  },
+  "Mason Appleton": {
+    "team": "",
+    "positions": [
+      "RW"
+    ]
+  },
+  "Nick Cousins": {
+    "team": "",
+    "positions": [
+      "LW"
+    ]
+  },
+  "Miles Wood": {
+    "team": "",
+    "positions": [
+      "LW"
+    ]
+  },
+  "Adam Larsson": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Maxim Tsyplakov": {
+    "team": "",
+    "positions": [
+      "LW",
+      "RW"
+    ]
+  },
+  "Jacob Middleton": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Dante Fabbro": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Jalen Chatfield": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Elias Pettersson (D)": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Brayden McNabb": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Tyler Kleven": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Steven Lorentz": {
+    "team": "",
+    "positions": [
+      "LW",
+      "RW"
+    ]
+  },
+  "Johnathan Kovacevic": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Dylan Demelo": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Emil Martinsen Lilleberg": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Adam Pelech": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Nick Jensen": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Ian Moore": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Shakir Mukhamadullin": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Noel Acciari": {
+    "team": "",
+    "positions": [
+      "C",
+      "RW"
+    ]
+  },
+  "Logan O'Connor": {
+    "team": "",
+    "positions": [
+      "RW"
+    ]
+  },
+  "Nate Schmidt": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Ty Emberson": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Parker Wotherspoon": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Lian Bichsel": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Nic Dowd": {
+    "team": "",
+    "positions": [
+      "C"
+    ]
+  },
+  "Adam Edstrom": {
+    "team": "",
+    "positions": [
+      "C",
+      "LW"
+    ]
+  },
+  "Henri Jokiharju": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Nicolas Hague": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Ozzy Wiesblatt": {
+    "team": "",
+    "positions": [
+      "RW"
+    ]
+  },
+  "Paul Cotter": {
+    "team": "",
+    "positions": [
+      "LW"
+    ]
+  },
+  "Jeffrey Viel": {
+    "team": "",
+    "positions": [
+      "LW"
+    ]
+  },
+  "Josh Mahura": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Conor Timmins": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Michael McCarron": {
+    "team": "",
+    "positions": [
+      "C"
+    ]
+  },
+  "Tyler Myers": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Radek Faksa": {
+    "team": "",
+    "positions": [
+      "C"
+    ]
+  },
+  "Ondrej Palat": {
+    "team": "",
+    "positions": [
+      "LW"
+    ]
+  },
+  "Sean Kuraly": {
+    "team": "",
+    "positions": [
+      "C",
+      "RW"
+    ]
+  },
+  "Zach Whitecloud": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Timothy Liljegren": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Brett Pesce": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Trent Frederic": {
+    "team": "",
+    "positions": [
+      "C",
+      "LW",
+      "RW"
+    ]
+  },
+  "Brian Dumoulin": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Erik Cernak": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Alexei Toropchenko": {
+    "team": "",
+    "positions": [
+      "LW",
+      "RW"
+    ]
+  },
+  "Jonathan Aspirot": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Mario Ferraro": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Colton Sissons": {
+    "team": "",
+    "positions": [
+      "C",
+      "RW"
+    ]
+  },
+  "Jayden Struble": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Olli Maatta": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Zemgus Girgensons": {
+    "team": "",
+    "positions": [
+      "LW"
+    ]
+  },
+  "Emil Andrae": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Niko Mikkola": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Jonas Siegenthaler": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Jonas Rondbjerg": {
+    "team": "",
+    "positions": [
+      "RW"
+    ]
+  },
+  "Oskar Back": {
+    "team": "",
+    "positions": [
+      "C",
+      "LW"
+    ]
+  },
+  "Ryan Winterton": {
+    "team": "",
+    "positions": [
+      "RW"
+    ]
+  },
+  "Reid Schaefer": {
+    "team": "",
+    "positions": [
+      "LW"
+    ]
+  },
+  "Isac Lundestrom": {
+    "team": "",
+    "positions": [
+      "C"
+    ]
+  },
+  "Ryan Lindgren": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Colin Blackwell": {
+    "team": "",
+    "positions": [
+      "C",
+      "RW"
+    ]
+  },
+  "Connor Murphy": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Jaroslav Chmelar": {
+    "team": "",
+    "positions": [
+      "RW"
+    ]
+  },
+  "Cody Ceci": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Nick Bjugstad": {
+    "team": "",
+    "positions": [
+      "C"
+    ]
+  },
+  "Nico Sturm": {
+    "team": "",
+    "positions": [
+      "C"
+    ]
+  },
+  "Samuel Helenius": {
+    "team": "",
+    "positions": [
+      "C"
+    ]
+  },
+  "Tyler Tucker": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Brett Kulak": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Declan Chisholm": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Jamie Oleksiak": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Justin Barron": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Sam Carrick": {
+    "team": "",
+    "positions": [
+      "C"
+    ]
+  },
+  "Elias Salomonsson": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Joel Edmundson": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Jesper Boqvist": {
+    "team": "",
+    "positions": [
+      "C",
+      "LW"
+    ]
+  },
+  "Chris Tanev": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Tim Washe": {
+    "team": "",
+    "positions": [
+      "C"
+    ]
+  },
+  "Dmitry Kulikov": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Casey Cizikas": {
+    "team": "",
+    "positions": [
+      "C",
+      "LW"
+    ]
+  },
+  "Radko Gudas": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Lars Eller": {
+    "team": "",
+    "positions": [
+      "C"
+    ]
+  },
+  "Landon Slaggert": {
+    "team": "",
+    "positions": [
+      "LW",
+      "RW"
+    ]
+  },
+  "Uvis Balinskis": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Adam Boqvist": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Trevor van Riemsdyk": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Vincent Iorio": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Dmitri Simashev": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Spencer Stastney": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Brandon Duhaime": {
+    "team": "",
+    "positions": [
+      "LW",
+      "RW"
+    ]
+  },
+  "Jacob Quillan": {
+    "team": "",
+    "positions": [
+      "C"
+    ]
+  },
+  "Joe Veleno": {
+    "team": "",
+    "positions": [
+      "C"
+    ]
+  },
+  "Justin Kirkland": {
+    "team": "",
+    "positions": [
+      "C"
+    ]
+  },
+  "Albert Johansson": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Jeremy Lauzon": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Nick Seeler": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Jacob Bernard-Docker": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Ian Cole": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Ben Chiarot": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Matt Rempe": {
+    "team": "",
+    "positions": [
+      "RW"
+    ]
+  },
+  "Brandon Carlo": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Zack Ostapchuk": {
+    "team": "",
+    "positions": [
+      "C"
+    ]
+  },
+  "Jeff Malott": {
+    "team": "",
+    "positions": [
+      "LW"
+    ]
+  },
+  "Nikolas Matinpalo": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Brandon Tanev": {
+    "team": "",
+    "positions": [
+      "LW",
+      "RW"
+    ]
+  },
+  "Zach Bogosian": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Scott Mayfield": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Garnet Hathaway": {
+    "team": "",
+    "positions": [
+      "RW"
+    ]
+  },
+  "Vincent Desharnais": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Simon Benoit": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Ryan Graves": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Liam O'Brien": {
+    "team": "",
+    "positions": [
+      "LW",
+      "RW"
+    ]
+  },
+  "Jake Christiansen": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Joel Hanley": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Gavin McKenna": {
+    "team": "",
+    "positions": [
+      "LW"
+    ]
+  },
+  "Ivar Stenberg": {
+    "team": "",
+    "positions": [
+      "LW"
+    ]
+  },
+  "Roman Kantserov": {
+    "team": "",
+    "positions": [
+      "RW"
+    ]
+  },
+  "Ilya Protas": {
+    "team": "",
+    "positions": [
+      "LW"
+    ]
+  },
+  "James Hagens": {
+    "team": "",
+    "positions": [
+      "C"
+    ]
+  },
+  "Luca Cagnoni": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Egor Chinakhov": {
+    "team": "",
+    "positions": [
+      "LW",
+      "RW"
+    ]
+  },
+  "Alexander Nikishin": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Alexander Wennberg": {
+    "team": "",
+    "positions": [
+      "C"
+    ]
+  },
+  "Tommy Novak": {
+    "team": "",
+    "positions": [
+      "C",
+      "LW"
+    ]
+  },
+  "Nick Robertson": {
+    "team": "",
+    "positions": [
+      "RW"
+    ]
+  },
+  "Alexandre Texier": {
+    "team": "",
+    "positions": [
+      "LW",
+      "RW"
+    ]
+  },
+  "Matthew Savoie": {
+    "team": "",
+    "positions": [
+      "C",
+      "RW"
+    ]
+  },
+  "Maxim Shabanov": {
+    "team": "",
+    "positions": [
+      "RW"
+    ]
+  },
+  "J.J. Moser": {
+    "team": "",
+    "positions": [
+      "D"
+    ]
+  },
+  "Tim Stützle": {
+    "team": "",
+    "positions": [
+      "C",
+      "LW"
+    ]
+  },
+  "Alexis Lafrenière": {
+    "team": "",
+    "positions": [
+      "LW",
+      "RW"
+    ]
+  }
+}
