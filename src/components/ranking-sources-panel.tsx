@@ -1,13 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { parseCsvText, guessColumnMapping, type ParsedCsv } from "@/lib/csv";
+import { guessColumnMapping, type ParsedCsv } from "@/lib/csv";
 import { useDraftStore } from "@/store/draft-store";
 import { FieldSelect } from "./field-select";
+import { CsvOrPasteInput } from "./csv-or-paste-input";
 
 const FIELDS: { key: string; label: string; required?: boolean }[] = [
   { key: "name", label: "Player Name", required: true },
-  { key: "rank", label: "Rank", required: true },
+  { key: "rank", label: "Rank" },
 ];
 
 export function RankingSourcesPanel() {
@@ -16,42 +17,39 @@ export function RankingSourcesPanel() {
   const removeRankingSource = useDraftStore((s) => s.removeRankingSource);
 
   const [label, setLabel] = useState("");
-  const [pastedText, setPastedText] = useState("");
   const [parsed, setParsed] = useState<ParsedCsv | null>(null);
   const [mapping, setMapping] = useState<Record<string, string | null>>({});
   const [message, setMessage] = useState<string | null>(null);
 
-  function handleParse() {
-    if (!pastedText.trim()) return;
-    const result = parseCsvText(pastedText);
-    if (result.rows.length === 0) {
-      setMessage("Couldn't find any rows in that paste.");
-      return;
-    }
+  function handleParsed(result: ParsedCsv) {
     setParsed(result);
     setMapping(guessColumnMapping(result.detectedHeaderRow ? result.headers : []));
     setMessage(null);
   }
 
   function handleReset() {
-    setPastedText("");
     setParsed(null);
     setMapping({});
   }
 
   function handleAdd() {
-    if (!parsed || !mapping.name || !mapping.rank || !label.trim()) return;
+    if (!parsed || !mapping.name || !label.trim()) return;
 
     const nameCol = mapping.name;
     const rankCol = mapping.rank;
     const entries: { name: string; rank: number }[] = [];
+    let nextFallbackRank = 1;
 
     for (const row of parsed.rows) {
       const name = row[nameCol]?.trim();
-      const rankRaw = row[rankCol]?.trim();
-      if (!name || !rankRaw) continue;
-      const rank = Number(rankRaw.replace(/[,%]/g, ""));
-      if (!Number.isFinite(rank)) continue;
+      if (!name) continue;
+      // No Rank column mapped (or this row's cell doesn't parse)? Fall back
+      // to the row's position in the list - most pasted/exported rankings
+      // are already in ranked order.
+      const rankRaw = rankCol ? row[rankCol]?.trim() : undefined;
+      const parsedRank = rankRaw ? Number(rankRaw.replace(/[,%]/g, "")) : NaN;
+      const rank = Number.isFinite(parsedRank) ? parsedRank : nextFallbackRank;
+      nextFallbackRank += 1;
       entries.push({ name, rank });
     }
 
@@ -71,7 +69,8 @@ export function RankingSourcesPanel() {
         Add other rankings (a friend&apos;s list, another site&apos;s rankings) to see how each
         player stacks up across sources. They&apos;re matched to your main list by name and shown
         as extra columns on the Cheat Sheet, plus an Average Rank across your list and every
-        source that has that player.
+        source that has that player. Just a list of names, in order, is enough - a Rank column
+        is optional, and without one we&apos;ll use each row&apos;s position in the list instead.
       </p>
 
       {rankingSources.length > 0 && (
@@ -104,22 +103,11 @@ export function RankingSourcesPanel() {
         />
 
         {!parsed ? (
-          <>
-            <textarea
-              value={pastedText}
-              onChange={(e) => setPastedText(e.target.value)}
-              placeholder={"Paste rank data here, e.g.:\nConnor McDavid\t1\nNathan MacKinnon\t2"}
-              rows={5}
-              className="w-full rounded border border-line bg-surface px-2 py-1.5 text-xs text-ink placeholder:text-ink-faint focus:border-rink-blue focus:outline-none"
-            />
-            <button
-              onClick={handleParse}
-              disabled={!pastedText.trim()}
-              className="rounded bg-rink-blue px-3 py-1.5 text-xs font-semibold text-white hover:bg-rink-blue-dark disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              Parse pasted data
-            </button>
-          </>
+          <CsvOrPasteInput
+            onParsed={handleParsed}
+            defaultMode="paste"
+            pastePlaceholder={"Paste a list of names (in order), e.g.:\nConnor McDavid\nNathan MacKinnon\nCale Makar"}
+          />
         ) : (
           <>
             <p className="text-xs text-ink-faint">{parsed.rows.length} rows parsed.</p>
@@ -138,7 +126,7 @@ export function RankingSourcesPanel() {
             <div className="flex gap-2">
               <button
                 onClick={handleAdd}
-                disabled={!mapping.name || !mapping.rank || !label.trim()}
+                disabled={!mapping.name || !label.trim()}
                 className="rounded bg-rink-blue px-3 py-1.5 text-xs font-semibold text-white hover:bg-rink-blue-dark disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Add ranking source

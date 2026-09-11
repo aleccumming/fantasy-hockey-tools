@@ -9,12 +9,26 @@ import { normalizeName } from "./name-matching";
  * anyone, including opponents in the simulation), which breaks a real
  * draft. Added players get no rank/adp, so they naturally sort after every
  * ranked player (see rankPlayers() in scoring.ts).
+ *
+ * Also backfills `team` on players already in the list whose CSV didn't
+ * include a team column (or left it blank) - never overrides a team the
+ * CSV actually provided.
  */
 export function mergePlayerUniverse(
   players: Player[],
   universe: { name: string; team: string; positions: Position[] }[]
-): { players: Player[]; addedCount: number } {
+): { players: Player[]; addedCount: number; teamBackfillCount: number } {
+  const universeByName = new Map(universe.map((u) => [normalizeName(u.name), u]));
   const existing = new Set(players.map((p) => normalizeName(p.name)));
+
+  let teamBackfillCount = 0;
+  const withTeams = players.map((p) => {
+    if (p.team !== "") return p;
+    const u = universeByName.get(normalizeName(p.name));
+    if (!u || !u.team) return p;
+    teamBackfillCount++;
+    return { ...p, team: u.team };
+  });
 
   const additions: Player[] = [];
   for (const u of universe) {
@@ -31,5 +45,9 @@ export function mergePlayerUniverse(
   }
   additions.sort((a, b) => a.name.localeCompare(b.name));
 
-  return { players: [...players, ...additions], addedCount: additions.length };
+  return {
+    players: [...withTeams, ...additions],
+    addedCount: additions.length,
+    teamBackfillCount,
+  };
 }

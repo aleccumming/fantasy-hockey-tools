@@ -1,17 +1,17 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useState } from "react";
 import {
   buildParsedCsv,
   buildPlayersFromRows,
   guessColumnMapping,
-  parseCsvFile,
   type ParsedCsv,
 } from "@/lib/csv";
 import { useDraftStore } from "@/store/draft-store";
 import { enrichPlayers } from "@/lib/enrich-players";
 import { usePlayerUniverse } from "@/lib/use-player-universe";
 import { FieldSelect } from "./field-select";
+import { CsvOrPasteInput } from "./csv-or-paste-input";
 
 const CORE_FIELDS: { key: string; label: string; required?: boolean }[] = [
   { key: "name", label: "Player Name", required: true },
@@ -56,31 +56,19 @@ function downloadTemplate() {
 }
 
 export function CsvUpload() {
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const [parsed, setParsed] = useState<ParsedCsv | null>(null);
   const [mapping, setMapping] = useState<Record<string, string | null>>({});
-  const [fileName, setFileName] = useState<string>("");
-  const [error, setError] = useState<string | null>(null);
+  const [sourceLabel, setSourceLabel] = useState<string>("");
   const setPlayers = useDraftStore((s) => s.setPlayers);
   const currentCount = useDraftStore((s) => s.players.length);
   const importNote = useDraftStore((s) => s.importNote);
   const setImportNote = useDraftStore((s) => s.setImportNote);
   const playerUniverse = usePlayerUniverse();
 
-  async function handleFile(file: File) {
-    setError(null);
-    try {
-      const result = await parseCsvFile(file);
-      if (result.rows.length === 0) {
-        setError("No rows found in that file.");
-        return;
-      }
-      setParsed(result);
-      setMapping(guessColumnMapping(result.detectedHeaderRow ? result.headers : []));
-      setFileName(file.name);
-    } catch {
-      setError("Couldn't parse that file. Make sure it's a valid CSV.");
-    }
+  function handleParsed(result: ParsedCsv, label: string) {
+    setParsed(result);
+    setMapping(guessColumnMapping(result.detectedHeaderRow ? result.headers : []));
+    setSourceLabel(label);
   }
 
   function handleToggleHeaderRow(hasHeaderRow: boolean) {
@@ -99,20 +87,19 @@ export function CsvUpload() {
     setImportNote(notes.length > 0 ? notes.join(". ") + "." : null);
 
     setParsed(null);
-    setFileName("");
+    setSourceLabel("");
   }
 
   function handleCancel() {
     setParsed(null);
-    setFileName("");
-    if (fileInputRef.current) fileInputRef.current.value = "";
+    setSourceLabel("");
   }
 
   if (parsed) {
     return (
       <div className="rounded-md border border-line bg-surface p-4">
         <h3 className="font-display text-sm font-bold uppercase tracking-wide text-ink">
-          Map columns from {fileName} ({parsed.rows.length} rows)
+          Map columns from {sourceLabel} ({parsed.rows.length} rows)
         </h3>
         <p className="mt-1 text-xs text-ink-dim">
           We guessed matches where possible &mdash; adjust any that are wrong, and leave
@@ -201,7 +188,6 @@ export function CsvUpload() {
             ))}
           </div>
         </details>
-        {error && <p className="mt-3 text-xs text-rink-red">{error}</p>}
         <div className="mt-4 flex gap-2">
           <button
             onClick={handleConfirm}
@@ -225,8 +211,8 @@ export function CsvUpload() {
     <div className="rounded-md border border-dashed border-line bg-surface p-6 text-center">
       <p className="text-sm text-ink-dim">
         {currentCount > 0
-          ? `${currentCount} players loaded. Upload a new CSV to replace them.`
-          : "Upload a CSV of your player rankings to get started."}
+          ? `${currentCount} players loaded. Upload or paste new rankings to replace them.`
+          : "Upload a CSV, or paste rankings directly, to get started."}
       </p>
       {importNote && <p className="mt-1 text-xs text-ink-faint">{importNote}</p>}
       <p className="mx-auto mt-2 max-w-md text-xs text-ink-faint">
@@ -236,23 +222,19 @@ export function CsvUpload() {
         <span className="text-ink-dim">Pos</span> if you have them. We auto-detect common
         header names, and you can fix the mapping after uploading.
       </p>
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept=".csv,text/csv"
-        onChange={(e) => {
-          const file = e.target.files?.[0];
-          if (file) handleFile(file);
-        }}
-        className="mt-3 block w-full text-sm text-ink-faint file:mr-3 file:rounded file:border-0 file:bg-rink-blue file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-white hover:file:bg-rink-blue-dark"
-      />
+      <div className="mt-3 text-left">
+        <CsvOrPasteInput
+          onParsed={handleParsed}
+          defaultMode="file"
+          pastePlaceholder={"Paste rankings here, e.g.:\nRank,Name,Team,Pos\n1,Connor McDavid,EDM,C"}
+        />
+      </div>
       <button
         onClick={downloadTemplate}
         className="mt-2 text-xs text-ink-faint underline hover:text-rink-blue"
       >
         Download an example CSV
       </button>
-      {error && <p className="mt-3 text-xs text-rink-red">{error}</p>}
     </div>
   );
 }

@@ -30,7 +30,8 @@ function orderUnrankedByAdp(players: Player[]): Player[] {
  * behavior stays consistent no matter how the list arrived (a fresh CSV
  * upload, or the one-time old-localStorage-draft import):
  *  1. Fix positions for anyone matched in the bundled Yahoo dataset.
- *  2. Add anyone missing entirely (mostly goalies) from the live NHL roster.
+ *  2. Add anyone missing entirely (mostly goalies) from the live NHL roster,
+ *     and backfill team for anyone already in the list who's missing it.
  *  3. Fill in ADP from the bundled dataset.
  *  4. Order the newly-added, unranked players by ADP.
  */
@@ -56,6 +57,9 @@ export function enrichPlayers(
       notes.push(
         `${result.addedCount} more players (mostly goalies) added from the live NHL roster so they can be drafted too`
       );
+    }
+    if (result.teamBackfillCount > 0) {
+      notes.push(`${result.teamBackfillCount} players filled in with their NHL team`);
     }
   }
 
