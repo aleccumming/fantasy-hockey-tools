@@ -87,13 +87,13 @@ export interface ExtraColumn {
   sortValue?: (p: RankedSkaterStats) => number;
 }
 
-// Fixed non-Player column widths (#, C-Score, Team, Pos, box score x5,
-// metric ranks x7, luck x3), summing to 100 alongside Player (13%) and the
-// Schedule extra column (11%) in the original Streamer Suggestions layout -
-// verified overlap-free at that combination. Player's width is solved for
+// Fixed non-Player column widths (#, C-Score, box score x5, metric ranks
+// x7, luck x3) - team/position moved into the Player cell itself (name with
+// "POS - TEAM" stacked below, a bigger headshot, styled after Yahoo's own
+// player rows) rather than separate columns. Player's width is solved for
 // below so the total always comes out to 100 regardless of whether the
 // extra column is present.
-const FIXED_COLUMNS_PERCENT = 76;
+const FIXED_COLUMNS_PERCENT = 65;
 
 type SortKey =
   | "name"
@@ -216,8 +216,6 @@ export function SkaterRankingsTable({
           <col style={{ width: "3%" }} />
           <col style={{ width: "5%" }} />
           <col style={{ width: `${playerWidth}%` }} />
-          <col style={{ width: "4%" }} />
-          <col style={{ width: "7%" }} />
           <col style={{ width: "2.5%" }} />
           <col style={{ width: "2.5%" }} />
           <col style={{ width: "2.5%" }} />
@@ -238,7 +236,7 @@ export function SkaterRankingsTable({
               stacked via fixed row heights, so the column labels stay
               readable while scrolling through a long ranked list. */}
           <tr className="sticky top-0 z-20 h-[25px] border-b border-stripe bg-surface text-left text-[10px] font-semibold uppercase tracking-wide text-ink-faint [&>th]:sticky [&>th]:top-0 [&>th]:bg-surface">
-            <th colSpan={5} />
+            <th colSpan={3} />
             <th colSpan={5} className="border-l border-stripe px-2 py-1 text-center">
               Box Score
             </th>
@@ -265,12 +263,6 @@ export function SkaterRankingsTable({
             </th>
             <th className="cursor-pointer select-none px-3 py-2 hover:text-ink" onClick={() => handleSort("name")}>
               Player<SortIndicator active={sortKey === "name"} dir={sortDir} />
-            </th>
-            <th className="cursor-pointer select-none px-3 py-2 hover:text-ink" onClick={() => handleSort("team")}>
-              Team<SortIndicator active={sortKey === "team"} dir={sortDir} />
-            </th>
-            <th className="cursor-pointer select-none px-3 py-2 hover:text-ink" onClick={() => handleSort("pos")}>
-              Pos<SortIndicator active={sortKey === "pos"} dir={sortDir} />
             </th>
             <th
               className="cursor-pointer select-none border-l border-stripe px-2 py-2 normal-case hover:text-ink"
@@ -348,15 +340,18 @@ export function SkaterRankingsTable({
               <td className="px-2 py-2 tabular-nums text-ink-dim">{i + 1}</td>
               <td className="px-2 py-2 tabular-nums font-semibold text-ink">{p.compositeRank.toFixed(1)}</td>
               <td className="px-3 py-2">
-                <div className="flex items-center gap-2">
-                  <PlayerHeadshot name={p.name} headshots={headshots} size={26} />
-                  <span className="min-w-0 flex-1 truncate font-semibold text-ink" title={p.name}>
-                    {abbreviateNames ? abbreviateFirstName(p.name) : p.name}
-                  </span>
+                <div className="flex items-center gap-2.5">
+                  <PlayerHeadshot name={p.name} headshots={headshots} size={38} />
+                  <div className="min-w-0">
+                    <div className="truncate font-semibold text-ink" title={p.name}>
+                      {abbreviateNames ? abbreviateFirstName(p.name) : p.name}
+                    </div>
+                    <div className="truncate text-xs text-ink-faint">
+                      {p.positions.join("/")} - {p.team}
+                    </div>
+                  </div>
                 </div>
               </td>
-              <td className="whitespace-nowrap px-3 py-2 text-ink-dim">{p.team}</td>
-              <td className="whitespace-nowrap px-3 py-2 text-ink-dim">{p.positions.join("/")}</td>
               <td className="border-l border-stripe px-2 py-2 tabular-nums text-ink-dim">{p.gamesPlayed}</td>
               <td className="px-2 py-2 tabular-nums text-ink-dim">{p.goals}</td>
               <td className="px-2 py-2 tabular-nums text-ink-dim">{p.assists}</td>
