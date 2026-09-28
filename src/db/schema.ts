@@ -83,6 +83,19 @@ export const yahooConnections = pgTable("yahoo_connections", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+// A shared, durable cache of Yahoo's full NHL player-eligibility list
+// (src/lib/yahoo-fantasy-client.ts's getAllPlayerEligibility) - global game
+// data, not tied to any user or league, so one row is enough for everyone.
+// This exists specifically because an in-memory-only cache resets on every
+// Vercel cold start/deploy, which in practice meant most requests paid the
+// real ~80-request Yahoo pagination cost (~8s) instead of hitting a cache -
+// a DB row survives cold starts and is instant to read.
+export const yahooPlayerEligibilityCache = pgTable("yahoo_player_eligibility_cache", {
+  id: text("id").primaryKey(), // always "nhl" - singleton row
+  data: jsonb("data").notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 // App data. One row per draft, owned by a user. `state` mirrors the
 // DraftStoreState shape from src/lib/types.ts as an opaque JSON blob -
 // see the "Accounts + Multi-Draft Foundation" plan for why this isn't

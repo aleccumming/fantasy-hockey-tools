@@ -7,7 +7,7 @@
 // nothing here is guessed.
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
-import { yahooConnections } from "@/db/schema";
+import { yahooConnections, yahooPlayerEligibilityCache } from "@/db/schema";
 import { refreshYahooToken } from "./yahoo-oauth";
 import type { RosterSlotConfig } from "./roster-fit";
 import type { SkaterPosition } from "./types";
@@ -317,6 +317,8 @@ let playerEligibilityCache: { data: YahooPlayerEligibility[]; expiresAt: number 
 // tied to any one league or roster, and it barely changes day to day.
 const PLAYER_UNIVERSE_CACHE_TTL_MS = 12 * 60 * 60 * 1000; // 12 hours
 
+const PLAYER_ELIGIBILITY_CACHE_ID = "nhl";
+
 /** Every NHL player's real Yahoo position eligibility, independent of any
  *  specific league - confirmed live that "/game/nhl/players" (unlike
  *  "/league/{key}/players") isn't scoped to one league's roster/free-agent
@@ -324,11 +326,27 @@ const PLAYER_UNIVERSE_CACHE_TTL_MS = 12 * 60 * 60 * 1000; // 12 hours
  *  showing a single primary position (NST, this app's other stat source,
  *  has no concept of fantasy multi-position eligibility - it only ever
  *  reports one position per player). Any signed-in Yahoo-connected user's
- *  token can fetch this since it isn't user- or league-specific data;
- *  cached globally, not per-user. */
+ *  token can fetch this since it isn't user- or league-specific data.
+ *
+ *  Two-tier cache: an in-memory copy for the rest of this warm serverless
+ *  instance's life, backed by a DB row (yahooPlayerEligibilityCache) that
+ *  survives cold starts and deploys - without the DB tier, a fresh instance
+ *  (the common case on Vercel) would re-pay the real ~80-request Yahoo
+ *  pagination cost on every first request instead of actually hitting a
+ *  12-hour cache. */
 export async function getAllPlayerEligibility(accessToken: string): Promise<YahooPlayerEligibility[]> {
   if (playerEligibilityCache && playerEligibilityCache.expiresAt > Date.now()) {
     return playerEligibilityCache.data;
+  }
+
+  const [dbRow] = await db
+    .select()
+    .from(yahooPlayerEligibilityCache)
+    .where(eq(yahooPlayerEligibilityCache.id, PLAYER_ELIGIBILITY_CACHE_ID));
+  if (dbRow && Date.now() - dbRow.updatedAt.getTime() < PLAYER_UNIVERSE_CACHE_TTL_MS) {
+    const data = dbRow.data as YahooPlayerEligibility[];
+    playerEligibilityCache = { data, expiresAt: Date.now() + PLAYER_UNIVERSE_CACHE_TTL_MS };
+    return data;
   }
 
   const players: YahooPlayerEligibility[] = [];
@@ -345,6 +363,15 @@ export async function getAllPlayerEligibility(accessToken: string): Promise<Yaho
     }
     if (pagePlayers.length < PLAYER_UNIVERSE_PAGE_SIZE) break;
   }
+
+  const updatedAt = new Date();
+  await db
+    .insert(yahooPlayerEligibilityCache)
+    .values({ id: PLAYER_ELIGIBILITY_CACHE_ID, data: players, updatedAt })
+    .onConflictDoUpdate({
+      target: yahooPlayerEligibilityCache.id,
+      set: { data: players, updatedAt },
+    });
 
   playerEligibilityCache = { data: players, expiresAt: Date.now() + PLAYER_UNIVERSE_CACHE_TTL_MS };
   return players;
