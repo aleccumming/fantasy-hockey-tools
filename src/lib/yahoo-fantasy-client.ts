@@ -5,7 +5,7 @@
 // here (see ROADMAP.md) - Yahoo's JSON is unusually irregular (arrays of
 // single-key objects, numeric string keys used as array indices), so
 // nothing here is guessed.
-import { eq } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 import { db } from "@/db";
 import { yahooConnections, yahooPlayerEligibilityCache } from "@/db/schema";
 import { refreshYahooToken } from "./yahoo-oauth";
@@ -325,30 +325,19 @@ const PLAYER_ELIGIBILITY_CACHE_ID = "nhl";
  *  pool at all, so this is the actual fix for the wider app only ever
  *  showing a single primary position (NST, this app's other stat source,
  *  has no concept of fantasy multi-position eligibility - it only ever
- *  reports one position per player). Any signed-in Yahoo-connected user's
- *  token can fetch this since it isn't user- or league-specific data.
+ *  reports one position per player).
  *
- *  Two-tier cache: an in-memory copy for the rest of this warm serverless
- *  instance's life, backed by a DB row (yahooPlayerEligibilityCache) that
- *  survives cold starts and deploys - without the DB tier, a fresh instance
- *  (the common case on Vercel) would re-pay the real ~80-request Yahoo
- *  pagination cost on every first request instead of actually hitting a
- *  12-hour cache. */
-export async function getAllPlayerEligibility(accessToken: string): Promise<YahooPlayerEligibility[]> {
-  if (playerEligibilityCache && playerEligibilityCache.expiresAt > Date.now()) {
-    return playerEligibilityCache.data;
-  }
-
-  const [dbRow] = await db
-    .select()
-    .from(yahooPlayerEligibilityCache)
-    .where(eq(yahooPlayerEligibilityCache.id, PLAYER_ELIGIBILITY_CACHE_ID));
-  if (dbRow && Date.now() - dbRow.updatedAt.getTime() < PLAYER_UNIVERSE_CACHE_TTL_MS) {
-    const data = dbRow.data as YahooPlayerEligibility[];
-    playerEligibilityCache = { data, expiresAt: Date.now() + PLAYER_UNIVERSE_CACHE_TTL_MS };
-    return data;
-  }
-
+ *  Deliberately NOT tied to any particular page request or user's live
+ *  Yahoo connection - the site shouldn't need SOMEONE to be actively
+ *  connected, or make anyone wait ~8s, just to show correct positions.
+ *  A daily cron job (src/app/api/cron/refresh-player-eligibility/route.ts)
+ *  keeps the DB row (yahooPlayerEligibilityCache) fresh in the background
+ *  using whichever connection is available; every page request just reads
+ *  that row - see getCachedPlayerEligibility below. This function is the
+ *  one that actually talks to Yahoo and writes the cache; only the cron
+ *  route (and this file's own local dev/verification scripts) should call
+ *  it directly. */
+export async function refreshPlayerEligibilityCache(accessToken: string): Promise<YahooPlayerEligibility[]> {
   const players: YahooPlayerEligibility[] = [];
   for (let page = 0; page < PLAYER_UNIVERSE_MAX_PAGES; page++) {
     const start = page * PLAYER_UNIVERSE_PAGE_SIZE;
@@ -375,4 +364,36 @@ export async function getAllPlayerEligibility(accessToken: string): Promise<Yaho
 
   playerEligibilityCache = { data: players, expiresAt: Date.now() + PLAYER_UNIVERSE_CACHE_TTL_MS };
   return players;
+}
+
+/** What every page request actually calls: a plain DB read, no Yahoo call
+ *  and no dependency on the requesting user's own Yahoo connection. Returns
+ *  null only if the cache has genuinely never been seeded yet (e.g. right
+ *  after this table was first created, before the cron job's first run). */
+export async function getCachedPlayerEligibility(): Promise<YahooPlayerEligibility[] | null> {
+  if (playerEligibilityCache) return playerEligibilityCache.data;
+
+  const [dbRow] = await db
+    .select()
+    .from(yahooPlayerEligibilityCache)
+    .where(eq(yahooPlayerEligibilityCache.id, PLAYER_ELIGIBILITY_CACHE_ID));
+  if (!dbRow) return null;
+
+  const data = dbRow.data as YahooPlayerEligibility[];
+  playerEligibilityCache = { data, expiresAt: Date.now() + PLAYER_UNIVERSE_CACHE_TTL_MS };
+  return data;
+}
+
+/** Any one stored Yahoo connection's valid access token, for background
+ *  jobs (the cron refresh) that need to call Yahoo but aren't acting on
+ *  behalf of a specific signed-in request - this data is global game data,
+ *  not user-specific, so it doesn't matter whose connection is used. Picks
+ *  whichever was updated most recently. Returns null if no one has ever
+ *  connected Yahoo at all (the cache just can't be refreshed until then -
+ *  same real-world constraint as everywhere else in this app that needs a
+ *  Yahoo token). */
+export async function getAnyValidYahooAccessToken(): Promise<string | null> {
+  const [row] = await db.select().from(yahooConnections).orderBy(desc(yahooConnections.updatedAt)).limit(1);
+  if (!row) return null;
+  return getValidYahooAccessToken(row.userId);
 }

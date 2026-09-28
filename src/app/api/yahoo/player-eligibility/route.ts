@@ -1,24 +1,21 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
-import { getValidYahooAccessToken, getAllPlayerEligibility, YahooNotConnectedError } from "@/lib/yahoo-fantasy-client";
+import { getCachedPlayerEligibility } from "@/lib/yahoo-fantasy-client";
 
-// Not league-scoped - any signed-in, Yahoo-connected user's token works,
-// since this is public game data (every NHL player's position eligibility),
-// not something specific to their account or league.
+// A plain DB read - not tied to the requesting user's own Yahoo connection
+// (see refreshPlayerEligibilityCache/getCachedPlayerEligibility in
+// yahoo-fantasy-client.ts). A daily cron job keeps the underlying cache
+// fresh in the background, so no page load ever waits on Yahoo here.
 export async function GET() {
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
 
   try {
-    const accessToken = await getValidYahooAccessToken(session.user.id);
-    const eligibility = await getAllPlayerEligibility(accessToken);
+    const eligibility = await getCachedPlayerEligibility();
     return NextResponse.json({ eligibility });
   } catch (err) {
-    if (err instanceof YahooNotConnectedError) {
-      return NextResponse.json({ eligibility: null, connected: false });
-    }
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : "Failed to load Yahoo player eligibility" },
+      { error: err instanceof Error ? err.message : "Failed to load player eligibility" },
       { status: 502 }
     );
   }

@@ -55,13 +55,21 @@ toggle) + Compare + a Drop & Replace flow.
       split happens (not just the display label - a real multi-position
       player could otherwise land in the wrong group entirely). Verified
       live: 1589 total players, 231 genuinely multi-position skaters (e.g.
-      Draisaitl C/LW, Tkachuk C/LW). See `getAllPlayerEligibility` in
-      `yahoo-fantasy-client.ts` (paginated, 12h server cache - this is
-      global game data, not user- or league-specific) and
-      `applyEligibilityOverrides` in `player-evaluator-board.tsx`. Only
-      active for a Yahoo-connected user; falls back to NST's single
-      position otherwise, same graceful-degradation pattern as everywhere
-      else Yahoo data is optional.
+      Draisaitl C/LW, Tkachuk C/LW). See `refreshPlayerEligibilityCache` in
+      `yahoo-fantasy-client.ts` (paginated Yahoo fetch, ~8s) and
+      `applyEligibilityOverrides` in `player-evaluator-board.tsx`.
+      Restructured (2026-09-28) so no page request ever depends on a live
+      Yahoo call or the viewer's own connection: a daily cron job
+      (`vercel.json`, `/api/cron/refresh-player-eligibility`, secured with
+      `CRON_SECRET`) refreshes a DB-backed cache
+      (`yahoo_player_eligibility_cache`, one global row) in the background,
+      using whichever Yahoo connection is available
+      (`getAnyValidYahooAccessToken` - this is global game data, not
+      user-specific, so it doesn't matter whose token). Every page just
+      reads that row (`getCachedPlayerEligibility`) - fast, no wait, and
+      correct as long as at least one person somewhere has ever connected
+      Yahoo. Falls back to NST's single position only if the cache has
+      literally never been seeded.
 - [ ] Add a "Last Season" window option alongside Last 5 / Last 10 / Season.
       Today the Season window only shows last year's data as an automatic
       fallback (`currentNstSeason()` in `nst-client.ts`) before the new
