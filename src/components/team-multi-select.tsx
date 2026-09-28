@@ -37,7 +37,7 @@ export function TeamMultiSelect({
         {label} <span className="text-ink-faint">&#9662;</span>
       </button>
       {open && (
-        <div className="absolute z-10 mt-1 max-h-64 w-40 overflow-y-auto rounded-md border border-line bg-surface p-1 shadow-md">
+        <div className="absolute z-40 mt-1 max-h-64 w-40 overflow-y-auto rounded-md border border-line bg-surface p-1 shadow-md">
           <button
             // onMouseDown (not onClick) so this fires before the trigger
             // button's onBlur closes the dropdown out from under it.

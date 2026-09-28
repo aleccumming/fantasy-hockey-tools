@@ -93,7 +93,7 @@ export interface ExtraColumn {
 // player rows) rather than separate columns. Player's width is solved for
 // below so the total always comes out to 100 regardless of whether the
 // extra column is present.
-const FIXED_COLUMNS_PERCENT = 65;
+const FIXED_COLUMNS_PERCENT = 66.5;
 
 type SortKey =
   | "name"
@@ -214,7 +214,7 @@ export function SkaterRankingsTable({
       <table className="w-full table-fixed text-sm">
         <colgroup>
           <col style={{ width: "3%" }} />
-          <col style={{ width: "5%" }} />
+          <col style={{ width: "6.5%" }} />
           <col style={{ width: `${playerWidth}%` }} />
           <col style={{ width: "2.5%" }} />
           <col style={{ width: "2.5%" }} />
@@ -255,7 +255,7 @@ export function SkaterRankingsTable({
               #
             </th>
             <th
-              className="cursor-pointer select-none px-2 py-2 hover:text-ink"
+              className="cursor-pointer select-none whitespace-nowrap px-2 py-2 hover:text-ink"
               onClick={() => handleSort("compositeRank")}
               title="Composite rank score - average of the 7 metric ranks to the right, lower is better"
             >
