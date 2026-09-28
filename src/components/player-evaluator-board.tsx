@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { computeCompositeRankingsByGroup, type RankedSkaterStats } from "@/lib/streamer-stats";
+import { computeCompositeRankingsByGroup, type RankedSkaterStats, type SkaterRateStats } from "@/lib/streamer-stats";
 import { SAMPLE_SKATER_STATS } from "@/lib/streamer-sample-data";
 import { useHeadshots } from "@/lib/use-headshots";
 import { usePlayerEvaluatorStats } from "@/lib/use-player-evaluator-stats";
@@ -11,15 +11,37 @@ import { SkaterRankingsTable, LuckLegend } from "@/components/skater-rankings-ta
 import { PlayerComparisonPanel, type ComparePlayerData } from "@/components/player-comparison-panel";
 import { PlayerSearchPicker, type PickablePlayer } from "@/components/player-search-picker";
 import { DropReplaceFlow } from "@/components/drop-replace-flow";
+import { TeamMultiSelect } from "@/components/team-multi-select";
 import { useMyRoster } from "@/lib/use-my-roster";
 import { useYahooFreeAgents } from "@/lib/use-yahoo-free-agents";
+import { useYahooPlayerEligibility } from "@/lib/use-yahoo-player-eligibility";
 import { normalizeName } from "@/lib/name-matching";
 import type { Position } from "@/lib/types";
+import type { YahooPlayerEligibility } from "@/lib/yahoo-fantasy-client";
+
+// NST (this app's stat source) only ever reports one primary position per
+// player - it has no concept of fantasy multi-position eligibility. Yahoo's
+// game-wide player list does (confirmed live: e.g. Mitch Marner shows
+// eligible at C/LW/RW), so when it's available this overrides team+
+// positions BEFORE the forward/defense split below - a player whose real
+// Yahoo eligibility includes D but whose NST-reported position doesn't
+// would otherwise land in the wrong group entirely, not just show the
+// wrong position label.
+function applyEligibilityOverrides(
+  stats: SkaterRateStats[],
+  eligibilityByName: Map<string, YahooPlayerEligibility> | null
+): SkaterRateStats[] {
+  if (!eligibilityByName) return stats;
+  return stats.map((s) => {
+    const override = eligibilityByName.get(normalizeName(s.name));
+    if (!override || override.isGoalie || override.positions.length === 0) return s;
+    return { ...s, team: override.team, positions: override.positions };
+  });
+}
 
 type PageTab = "rankings" | "compare";
 type SkaterGroup = "F" | "D";
 type OwnershipFilter = "all" | "unowned";
-const FORWARD_POSITION_FILTERS: ("ALL" | Position)[] = ["ALL", "C", "LW", "RW"];
 
 const WINDOW_TABS: { key: EvaluatorWindow; label: string; windowLabel: string }[] = [
   { key: "last5", label: "Last 5 Games", windowLabel: "last 5 games" },
@@ -39,8 +61,8 @@ export function PlayerEvaluatorBoard({ activeLeagueKey }: { activeLeagueKey: str
   const [pageTab, setPageTab] = useState<PageTab>("rankings");
   const [windowKey, setWindowKey] = useState<EvaluatorWindow>("last5");
   const [group, setGroup] = useState<SkaterGroup>("F");
-  const [positionFilter, setPositionFilter] = useState<"ALL" | Position>("ALL");
-  const [teamFilter, setTeamFilter] = useState("ALL");
+  const [positionFilters, setPositionFilters] = useState<Set<Position>>(new Set());
+  const [teamFilters, setTeamFilters] = useState<Set<string>>(new Set());
   const [minToi, setMinToi] = useState(0);
   const [nameQuery, setNameQuery] = useState("");
   const [ownershipFilter, setOwnershipFilter] = useState<OwnershipFilter>("all");
@@ -50,12 +72,16 @@ export function PlayerEvaluatorBoard({ activeLeagueKey }: { activeLeagueKey: str
   const headshots = useHeadshots();
   const { roster } = useMyRoster();
   const { freeAgents: yahooFreeAgents } = useYahooFreeAgents(activeLeagueKey);
+  const { byName: yahooEligibilityByName } = useYahooPlayerEligibility();
   const { windows: liveWindows, computedAt, error: statsError, loading: statsLoading } = usePlayerEvaluatorStats();
   const usingSampleData = !liveWindows;
 
   // Rankings tab: ranked by whichever window is currently selected there.
   const statSource = liveWindows ? liveWindows[windowKey] : SAMPLE_SKATER_STATS;
-  const byGroup = useMemo(() => computeCompositeRankingsByGroup(statSource), [statSource]);
+  const byGroup = useMemo(() => {
+    const corrected = applyEligibilityOverrides(statSource, yahooEligibilityByName);
+    return computeCompositeRankingsByGroup(corrected);
+  }, [statSource, yahooEligibilityByName]);
   const ranked = group === "F" ? byGroup.forwards : byGroup.defense;
 
   const filtered = useMemo(() => {
@@ -65,10 +91,10 @@ export function PlayerEvaluatorBoard({ activeLeagueKey }: { activeLeagueKey: str
     const availableSet = yahooFreeAgents ? new Set(yahooFreeAgents.map((fa) => normalizeName(fa.name))) : null;
     const rosterSet = new Set(roster.map((p) => normalizeName(p.name)));
     return ranked.filter((p) => {
-      if (group === "F" && positionFilter !== "ALL" && !p.positions.includes(positionFilter)) {
+      if (group === "F" && positionFilters.size > 0 && !p.positions.some((pos) => positionFilters.has(pos))) {
         return false;
       }
-      if (teamFilter !== "ALL" && p.team !== teamFilter) return false;
+      if (teamFilters.size > 0 && !teamFilters.has(p.team)) return false;
       if (p.toiPerGame < minToi) return false;
       if (query && !p.name.toLowerCase().includes(query)) return false;
       if (ownershipFilter === "unowned") {
@@ -77,7 +103,7 @@ export function PlayerEvaluatorBoard({ activeLeagueKey }: { activeLeagueKey: str
       }
       return true;
     });
-  }, [ranked, group, positionFilter, teamFilter, minToi, nameQuery, ownershipFilter, roster, yahooFreeAgents]);
+  }, [ranked, group, positionFilters, teamFilters, minToi, nameQuery, ownershipFilter, roster, yahooFreeAgents]);
 
   // Compare tab: independent of Rankings' filters/window - ranks all three
   // windows up front so a player picked here shows Last 5 / Last 10 /
@@ -86,10 +112,11 @@ export function PlayerEvaluatorBoard({ activeLeagueKey }: { activeLeagueKey: str
     const result = {} as Record<EvaluatorWindow, { forwards: RankedSkaterStats[]; defense: RankedSkaterStats[] }>;
     for (const w of ALL_WINDOWS) {
       const source = liveWindows ? liveWindows[w] : SAMPLE_SKATER_STATS;
-      result[w] = computeCompositeRankingsByGroup(source);
+      const corrected = applyEligibilityOverrides(source, yahooEligibilityByName);
+      result[w] = computeCompositeRankingsByGroup(corrected);
     }
     return result;
-  }, [liveWindows]);
+  }, [liveWindows, yahooEligibilityByName]);
 
   const byNameByWindow = useMemo(() => {
     const result = {} as Record<EvaluatorWindow, Map<string, RankedSkaterStats>>;
@@ -314,12 +341,29 @@ export function PlayerEvaluatorBoard({ activeLeagueKey }: { activeLeagueKey: str
             </div>
             {group === "F" && (
               <div className="flex gap-1">
-                {FORWARD_POSITION_FILTERS.map((pos) => (
+                <button
+                  onClick={() => setPositionFilters(new Set())}
+                  className={`rounded px-2 py-1 text-xs font-semibold ${
+                    positionFilters.size === 0
+                      ? "bg-rink-blue text-white"
+                      : "border border-line bg-surface text-ink-dim hover:border-rink-blue hover:text-rink-blue"
+                  }`}
+                >
+                  ALL
+                </button>
+                {(["C", "LW", "RW"] as const).map((pos) => (
                   <button
                     key={pos}
-                    onClick={() => setPositionFilter(pos)}
+                    onClick={() =>
+                      setPositionFilters((prev) => {
+                        const next = new Set(prev);
+                        if (next.has(pos)) next.delete(pos);
+                        else next.add(pos);
+                        return next;
+                      })
+                    }
                     className={`rounded px-2 py-1 text-xs font-semibold ${
-                      positionFilter === pos
+                      positionFilters.has(pos)
                         ? "bg-rink-blue text-white"
                         : "border border-line bg-surface text-ink-dim hover:border-rink-blue hover:text-rink-blue"
                     }`}
@@ -336,18 +380,7 @@ export function PlayerEvaluatorBoard({ activeLeagueKey }: { activeLeagueKey: str
               placeholder="Search player..."
               className="w-48 rounded border border-line bg-surface px-2 py-1 text-xs text-ink placeholder:text-ink-faint focus:border-rink-blue focus:outline-none"
             />
-            <select
-              value={teamFilter}
-              onChange={(e) => setTeamFilter(e.target.value)}
-              className="rounded border border-line bg-surface px-1.5 py-1 text-xs text-ink focus:border-rink-blue focus:outline-none"
-            >
-              <option value="ALL">All Teams</option>
-              {SORTED_TEAMS.map((team) => (
-                <option key={team} value={team}>
-                  {team}
-                </option>
-              ))}
-            </select>
+            <TeamMultiSelect teams={SORTED_TEAMS} selected={teamFilters} onChange={setTeamFilters} />
             <label className="flex items-center gap-1.5 text-xs font-medium text-ink-dim">
               Min TOI
               <select

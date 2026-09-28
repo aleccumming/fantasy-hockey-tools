@@ -77,6 +77,7 @@ export function DropReplaceFlow({
   onClose: () => void;
 }) {
   const [dropCandidates, setDropCandidates] = useState<Set<string>>(new Set());
+  const [groupFilter, setGroupFilter] = useState<"F" | "D">("F");
   const [rangeStart, setRangeStart] = useState(DEFAULT_RANGE.start);
   const [rangeEnd, setRangeEnd] = useState(DEFAULT_RANGE.end);
   const [gamesFilter, setGamesFilter] = useState<number | null>(null);
@@ -164,19 +165,6 @@ export function DropReplaceFlow({
 
   const rangeDays = useMemo(() => datesInRange(rangeStart, rangeEnd), [rangeStart, rangeEnd]);
 
-  // Dropping a goalie doesn't imply "I want a forward" or "I want a
-  // defenseman" - only skater drops narrow the F/D filter. Dropping only
-  // goalies leaves this empty, which already means "show me both."
-  const droppedGroups = useMemo(
-    () =>
-      new Set(
-        skaterRoster
-          .filter((p) => dropCandidates.has(p.name))
-          .map((p) => (p.positions.includes("D") ? "D" : "F"))
-      ),
-    [dropCandidates, skaterRoster]
-  );
-
   // Full skater roster minus whoever you're dropping - all of them
   // genuinely compete for the active slots each day (lineups can be
   // reshuffled daily, so there's no fixed "these are always active"
@@ -195,7 +183,7 @@ export function DropReplaceFlow({
     const rosterSet = new Set(roster.map((p) => normalizeName(p.name)));
     const groupOk = (positions: string[]) => {
       const group = positions.includes("D") ? "D" : "F";
-      return droppedGroups.size === 0 || droppedGroups.has(group);
+      return groupFilter === group;
     };
 
     if (usingYahoo && !yahooFreeAgents) return []; // still loading - don't flash "everyone" as a candidate
@@ -214,7 +202,7 @@ export function DropReplaceFlow({
     }
 
     return allRanked.filter((p) => !rosterSet.has(normalizeName(p.name)) && groupOk(p.positions));
-  }, [allRanked, droppedGroups, roster, yahooFreeAgents, usingYahoo]);
+  }, [allRanked, groupFilter, roster, yahooFreeAgents, usingYahoo]);
 
   // Search pool for the roster editor: everyone in the stat windows.
   const rosterPool = useMemo(() => {
@@ -428,15 +416,22 @@ export function DropReplaceFlow({
                 )}
               </select>
             </label>
-            <span className="text-xs text-ink-faint">
-              Filtered to{" "}
-              {droppedGroups.size === 0 || (droppedGroups.has("F") && droppedGroups.has("D"))
-                ? "forwards and defense"
-                : droppedGroups.has("D")
-                  ? "defense"
-                  : "forwards"}
-              , ranked by C-Score ({WINDOW_LABEL})
-            </span>
+            <div className="flex gap-1">
+              {(["F", "D"] as const).map((g) => (
+                <button
+                  key={g}
+                  onClick={() => setGroupFilter(g)}
+                  className={`rounded px-2.5 py-1 text-xs font-semibold ${
+                    groupFilter === g
+                      ? "bg-rink-blue text-white"
+                      : "border border-line bg-surface text-ink-dim hover:border-rink-blue hover:text-rink-blue"
+                  }`}
+                >
+                  {g === "F" ? "Forwards" : "Defense"}
+                </button>
+              ))}
+            </div>
+            <span className="text-xs text-ink-faint">ranked by C-Score ({WINDOW_LABEL})</span>
           </div>
 
           {usingYahoo && yahooFreeAgentsLoading ? (

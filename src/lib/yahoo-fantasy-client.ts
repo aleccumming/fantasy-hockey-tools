@@ -302,3 +302,50 @@ export async function getFreeAgents(leagueKey: string, accessToken: string): Pro
   freeAgentsCache.set(leagueKey, { data: freeAgents, expiresAt: Date.now() + FREE_AGENTS_CACHE_TTL_MS });
   return freeAgents;
 }
+
+export interface YahooPlayerEligibility {
+  name: string;
+  team: string;
+  positions: SkaterPosition[];
+  isGoalie: boolean;
+}
+
+const PLAYER_UNIVERSE_PAGE_SIZE = 25;
+const PLAYER_UNIVERSE_MAX_PAGES = 80; // hard ceiling (2000 players) - real NHL universe is smaller
+let playerEligibilityCache: { data: YahooPlayerEligibility[]; expiresAt: number } | null = null;
+// Long TTL - this is real position eligibility for every NHL player, not
+// tied to any one league or roster, and it barely changes day to day.
+const PLAYER_UNIVERSE_CACHE_TTL_MS = 12 * 60 * 60 * 1000; // 12 hours
+
+/** Every NHL player's real Yahoo position eligibility, independent of any
+ *  specific league - confirmed live that "/game/nhl/players" (unlike
+ *  "/league/{key}/players") isn't scoped to one league's roster/free-agent
+ *  pool at all, so this is the actual fix for the wider app only ever
+ *  showing a single primary position (NST, this app's other stat source,
+ *  has no concept of fantasy multi-position eligibility - it only ever
+ *  reports one position per player). Any signed-in Yahoo-connected user's
+ *  token can fetch this since it isn't user- or league-specific data;
+ *  cached globally, not per-user. */
+export async function getAllPlayerEligibility(accessToken: string): Promise<YahooPlayerEligibility[]> {
+  if (playerEligibilityCache && playerEligibilityCache.expiresAt > Date.now()) {
+    return playerEligibilityCache.data;
+  }
+
+  const players: YahooPlayerEligibility[] = [];
+  for (let page = 0; page < PLAYER_UNIVERSE_MAX_PAGES; page++) {
+    const start = page * PLAYER_UNIVERSE_PAGE_SIZE;
+    const json = await yahooGet(`/game/nhl/players;start=${start};count=${PLAYER_UNIVERSE_PAGE_SIZE}`, accessToken);
+    const gameArr = (json as { fantasy_content: { game: unknown[] } }).fantasy_content.game;
+    const playersResource = gameArr[1] as { players: Record<string, unknown> };
+    const pagePlayers = collectionValues(playersResource.players);
+    if (pagePlayers.length === 0) break;
+
+    for (const p of pagePlayers) {
+      players.push(parsePlayerResource(flattenResource((p as { player: unknown }).player)));
+    }
+    if (pagePlayers.length < PLAYER_UNIVERSE_PAGE_SIZE) break;
+  }
+
+  playerEligibilityCache = { data: players, expiresAt: Date.now() + PLAYER_UNIVERSE_CACHE_TTL_MS };
+  return players;
+}

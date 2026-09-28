@@ -45,6 +45,23 @@ toggle) + Compare + a Drop & Replace flow.
       and then fully reverted the same day once Yahoo access came through -
       no trace of it should remain (`free-agent-sheet.ts`, `use-free-agents.ts`,
       `/api/free-agents` are gone; don't rebuild this path).
+- [x] Fixed a real bug: Rankings/Compare only ever showed a player's single
+      primary position, since NST (this app's stat source) has no concept
+      of fantasy multi-position eligibility - it only reports one position
+      per player. Fixed by fetching Yahoo's `/game/nhl/players` (confirmed
+      live: NOT league-scoped, unlike `/league/{key}/players` - it's every
+      NHL player Yahoo tracks, independent of any specific league or
+      roster) and overriding team+positions before the forward/defense
+      split happens (not just the display label - a real multi-position
+      player could otherwise land in the wrong group entirely). Verified
+      live: 1589 total players, 231 genuinely multi-position skaters (e.g.
+      Draisaitl C/LW, Tkachuk C/LW). See `getAllPlayerEligibility` in
+      `yahoo-fantasy-client.ts` (paginated, 12h server cache - this is
+      global game data, not user- or league-specific) and
+      `applyEligibilityOverrides` in `player-evaluator-board.tsx`. Only
+      active for a Yahoo-connected user; falls back to NST's single
+      position otherwise, same graceful-degradation pattern as everywhere
+      else Yahoo data is optional.
 - [ ] Add a "Last Season" window option alongside Last 5 / Last 10 / Season.
       Today the Season window only shows last year's data as an automatic
       fallback (`currentNstSeason()` in `nst-client.ts`) before the new
@@ -86,6 +103,23 @@ Players' tab bar.
       Caveat: "presumed starter" is a projection (Start Tracker's current-
       share leader), not a confirmed daily lineup - no free source publishes
       that.
+
+## Scoring formats
+
+- [ ] Support categories (roto/head-to-head-categories, a.k.a. "bangers")
+      leagues, not just points leagues. C-Score and the whole ranking system
+      right now are tuned toward points-league value (shot- and chance-
+      generation metrics). A categories league also cares heavily about
+      hits, blocks, and PIM (and separately, for streaming decisions,
+      whichever specific categories that league actually scores - a league
+      might not even use all of G/A/PPP/SOG/HIT/BLK/PIM). For Drop & Replace
+      specifically, streaming adds need to be judged against the categories
+      that matter for that team's build (e.g. a hits/blocks-needy team
+      should surface bangers over pure shot-generation forwards even at a
+      lower C-Score). Needs real design thought: possibly a
+      league-scoring-format setting (categories used + punt strategy) that
+      reweights or supplements C-Score, not a full replacement of it, since
+      points-league value should stay unaffected.
 
 ## New tools
 
