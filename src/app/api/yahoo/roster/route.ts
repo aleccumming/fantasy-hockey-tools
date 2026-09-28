@@ -5,6 +5,7 @@ import {
   getMyTeamKey,
   getMyRoster,
   getLeagueRosterSlots,
+  getLeagueRosterCapacity,
   YahooNotConnectedError,
 } from "@/lib/yahoo-fantasy-client";
 
@@ -18,11 +19,12 @@ export async function GET(req: NextRequest) {
   try {
     const accessToken = await getValidYahooAccessToken(session.user.id);
     const teamKey = await getMyTeamKey(leagueKey, accessToken);
-    const [roster, slots] = await Promise.all([
+    const [roster, slots, capacity] = await Promise.all([
       getMyRoster(teamKey, accessToken),
       getLeagueRosterSlots(leagueKey, accessToken),
+      getLeagueRosterCapacity(leagueKey, accessToken),
     ]);
-    return NextResponse.json({ roster, slots });
+    return NextResponse.json({ roster, slots, capacity });
   } catch (err) {
     if (err instanceof YahooNotConnectedError) {
       return NextResponse.json({ error: "Yahoo account not connected" }, { status: 401 });

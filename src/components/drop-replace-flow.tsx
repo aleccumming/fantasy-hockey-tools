@@ -82,7 +82,12 @@ export function DropReplaceFlow({
   const [gamesFilter, setGamesFilter] = useState<number | null>(null);
   const [editingRoster, setEditingRoster] = useState(false);
   const { roster: manualRoster, setRoster: setManualRoster } = useMyRoster();
-  const { roster: yahooRoster, slots: yahooSlots, loading: yahooRosterLoading } = useYahooRoster(activeLeagueKey);
+  const {
+    roster: yahooRoster,
+    slots: yahooSlots,
+    capacity: yahooCapacity,
+    loading: yahooRosterLoading,
+  } = useYahooRoster(activeLeagueKey);
   const { freeAgents: yahooFreeAgents, loading: yahooFreeAgentsLoading } = useYahooFreeAgents(activeLeagueKey);
   const { data: schedule } = useScheduleRange(rangeStart, rangeEnd);
 
@@ -93,6 +98,33 @@ export function DropReplaceFlow({
   const roster = usingYahoo ? (yahooRoster ?? EMPTY_ROSTER) : manualRoster;
   const rosterSlots = yahooSlots ?? SAMPLE_ROSTER_SLOTS;
   const rosterLoading = usingYahoo && yahooRosterLoading;
+  // Goalies are selectable as a drop (freeing roster space) but never part
+  // of the skater roster-fit slot matching - an empty positions array would
+  // otherwise look "eligible" for the universal UTIL slot.
+  const skaterRoster = useMemo(() => roster.filter((p) => !p.isGoalie), [roster]);
+
+  // A player parked on IR/IR+ doesn't count against the league's roster cap
+  // - that's the whole point of the slot, and it's how a real Yahoo manager
+  // can add a streamer without dropping anyone once someone's hurt. So
+  // "do I have room to add" depends on real roster usage vs. capacity, not
+  // on whether a drop is selected at all - and dropping an IR+ player
+  // specifically doesn't free any of that capacity, since it was never
+  // being used. Manual/sample mode has no real capacity model, so it keeps
+  // the older "you must pick a drop" behavior.
+  const droppingNonIRCount =
+    usingYahoo && yahooRoster
+      ? yahooRoster.filter((p) => dropCandidates.has(p.name) && !p.isOnIR).length
+      : 0;
+  const currentRosterUsage = usingYahoo && yahooRoster ? yahooRoster.filter((p) => !p.isOnIR).length : null;
+  const projectedRosterUsage = currentRosterUsage !== null ? currentRosterUsage - droppingNonIRCount : null;
+  const hasRoomToAdd = usingYahoo
+    ? yahooCapacity !== null && projectedRosterUsage !== null && projectedRosterUsage < yahooCapacity
+    : dropCandidates.size > 0;
+  const droppingOnlyIRPlayers =
+    usingYahoo &&
+    dropCandidates.size > 0 &&
+    droppingNonIRCount === 0 &&
+    (yahooRoster?.some((p) => dropCandidates.has(p.name) && p.isOnIR) ?? false);
 
   const statSource = liveWindows ? liveWindows.last5 : SAMPLE_SKATER_STATS;
   const byGroup = useMemo(() => computeCompositeRankingsByGroup(statSource), [statSource]);
@@ -132,22 +164,28 @@ export function DropReplaceFlow({
 
   const rangeDays = useMemo(() => datesInRange(rangeStart, rangeEnd), [rangeStart, rangeEnd]);
 
+  // Dropping a goalie doesn't imply "I want a forward" or "I want a
+  // defenseman" - only skater drops narrow the F/D filter. Dropping only
+  // goalies leaves this empty, which already means "show me both."
   const droppedGroups = useMemo(
     () =>
       new Set(
-        roster.filter((p) => dropCandidates.has(p.name)).map((p) => (p.positions.includes("D") ? "D" : "F"))
+        skaterRoster
+          .filter((p) => dropCandidates.has(p.name))
+          .map((p) => (p.positions.includes("D") ? "D" : "F"))
       ),
-    [dropCandidates, roster]
+    [dropCandidates, skaterRoster]
   );
 
-  // Full roster minus whoever you're dropping - all 18 genuinely compete
-  // for the active slots each day (lineups can be reshuffled daily, so
-  // there's no fixed "these 14 are always active" subset - which players
-  // actually start on a given day is just whatever that day's matching
-  // works out).
+  // Full skater roster minus whoever you're dropping - all of them
+  // genuinely compete for the active slots each day (lineups can be
+  // reshuffled daily, so there's no fixed "these are always active"
+  // subset - which players actually start on a given day is just whatever
+  // that day's matching works out). Goalies never occupy a skater slot, so
+  // dropping one doesn't change this set at all.
   const rosterForFit = useMemo(
-    () => roster.filter((p) => !dropCandidates.has(p.name)),
-    [dropCandidates, roster]
+    () => skaterRoster.filter((p) => !dropCandidates.has(p.name)),
+    [dropCandidates, skaterRoster]
   );
 
   // With a Yahoo league connected, candidates are exactly that league's real
@@ -227,7 +265,8 @@ export function DropReplaceFlow({
     sortValue: (p) => fitDaysByName.get(p.name)?.length ?? 0,
   };
 
-  const step = dropCandidates.size === 0 ? 1 : 2;
+  const step = hasRoomToAdd ? 2 : 1;
+  const addingWithoutDropping = usingYahoo && dropCandidates.size === 0 && hasRoomToAdd;
 
   return (
     <div>
@@ -237,13 +276,26 @@ export function DropReplaceFlow({
             Step {step} of 2
           </span>
           <h2 className="font-display text-lg font-bold uppercase tracking-wide text-ink">
-            {step === 1 ? "Select Player(s) to Drop" : "Best Replacements"}
+            {step === 1
+              ? "Select Player(s) to Drop"
+              : addingWithoutDropping
+                ? "Best Adds - You Have Roster Room"
+                : "Best Replacements"}
           </h2>
         </div>
         <button onClick={onClose} className="text-xs font-medium text-ink-faint hover:text-rink-red">
           Cancel
         </button>
       </div>
+
+      {usingYahoo && currentRosterUsage !== null && yahooCapacity !== null && (
+        <p className="mt-1 text-xs text-ink-faint">
+          Roster: {currentRosterUsage}/{yahooCapacity} spots used
+          {addingWithoutDropping && " - you have IR+ room to add without dropping anyone"}
+          {droppingOnlyIRPlayers &&
+            " - the player(s) you've selected are on IR+ and don't free a roster spot, so pick a non-IR+ player too if you need the room"}
+        </p>
+      )}
 
       <div className="mt-1 rounded-md border-l-4 border-rink-gold bg-rink-gold-light px-4 py-2.5 text-sm text-ink">
         {usingYahoo
@@ -290,9 +342,16 @@ export function DropReplaceFlow({
               <div className="flex items-center gap-2">
                 <PlayerHeadshot name={p.name} headshots={headshots} size={32} />
                 <div className="min-w-0">
-                  <div className="truncate text-sm font-semibold text-ink">{p.name}</div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="truncate text-sm font-semibold text-ink">{p.name}</span>
+                    {p.isOnIR && (
+                      <span className="shrink-0 rounded bg-rink-gold-light px-1 py-0.5 text-[10px] font-bold uppercase tracking-wide text-rink-gold">
+                        IR+
+                      </span>
+                    )}
+                  </div>
                   <div className="text-xs text-ink-faint">
-                    {p.team} &middot; {p.positions.join("/")}
+                    {p.team} &middot; {p.isGoalie ? "G" : p.positions.join("/")}
                   </div>
                 </div>
               </div>
@@ -370,7 +429,12 @@ export function DropReplaceFlow({
               </select>
             </label>
             <span className="text-xs text-ink-faint">
-              Filtered to {droppedGroups.has("F") && droppedGroups.has("D") ? "forwards and defense" : droppedGroups.has("D") ? "defense" : "forwards"}
+              Filtered to{" "}
+              {droppedGroups.size === 0 || (droppedGroups.has("F") && droppedGroups.has("D"))
+                ? "forwards and defense"
+                : droppedGroups.has("D")
+                  ? "defense"
+                  : "forwards"}
               , ranked by C-Score ({WINDOW_LABEL})
             </span>
           </div>

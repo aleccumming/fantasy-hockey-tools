@@ -1,11 +1,10 @@
 "use client";
 
 import { PlayerEvaluatorBoard } from "@/components/player-evaluator-board";
-import { YahooConnectStatus } from "@/components/yahoo-connect-status";
-import { useYahooLeagues } from "@/lib/use-yahoo-leagues";
+import { useActiveYahooLeague } from "@/lib/yahoo-league-context";
 
 export default function PlayersPage() {
-  const { leagues, activeLeagueKey, setActiveLeague, loading: leaguesLoading } = useYahooLeagues();
+  const { activeLeagueKey } = useActiveYahooLeague();
 
   return (
     <main className="mx-auto max-w-[1400px] px-4 py-6 sm:px-6">
@@ -18,13 +17,6 @@ export default function PlayersPage() {
         compare players side by side, or start a Drop &amp; Replace to find your best waiver-wire
         add.
       </p>
-
-      <YahooConnectStatus
-        leagues={leagues}
-        activeLeagueKey={activeLeagueKey}
-        onChangeLeague={setActiveLeague}
-        leaguesLoading={leaguesLoading}
-      />
 
       <div className="mt-6">
         <PlayerEvaluatorBoard activeLeagueKey={activeLeagueKey} />

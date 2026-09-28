@@ -7,6 +7,7 @@ import type { YahooRosterPlayer } from "./yahoo-fantasy-client";
 interface RosterResponse {
   roster: YahooRosterPlayer[];
   slots: RosterSlotConfig;
+  capacity: number;
 }
 
 /** The connected user's real roster + real roster-slot settings for one
@@ -47,6 +48,7 @@ export function useYahooRoster(leagueKey: string | null) {
   return {
     roster: data?.roster ?? null,
     slots: data?.slots ?? null,
+    capacity: data?.capacity ?? null,
     error,
     loading: Boolean(leagueKey) && !error && !data,
   };

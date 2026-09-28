@@ -20,6 +20,12 @@ export interface SampleRosterPlayer {
   name: string;
   team: string;
   positions: SkaterPosition[];
+  /** Always false/absent here - the manual/sample roster doesn't model
+   *  goalies or IR status yet. Present so this type stays structurally
+   *  compatible with YahooRosterPlayer wherever both are used
+   *  interchangeably. */
+  isGoalie?: boolean;
+  isOnIR?: boolean;
 }
 
 export const SAMPLE_ROSTER: SampleRosterPlayer[] = [

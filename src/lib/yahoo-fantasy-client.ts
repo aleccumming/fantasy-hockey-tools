@@ -174,6 +174,33 @@ export async function getLeagueRosterSlots(leagueKey: string, accessToken: strin
   return slots;
 }
 
+const rosterCapacityCache = new Map<string, { data: number; expiresAt: number }>();
+
+/** This league's total roster size cap - the sum of every roster_position's
+ *  count EXCEPT IR/IR+ (Yahoo's convention: an IR+ slot is bonus capacity
+ *  that doesn't count against your roster max, which is the whole point of
+ *  it - it's how you can add a streamer without dropping anyone once
+ *  you've moved an injured player there). Includes BN and G alongside the
+ *  active skater slots, since they all draw from the same shared cap. */
+export async function getLeagueRosterCapacity(leagueKey: string, accessToken: string): Promise<number> {
+  const cached = rosterCapacityCache.get(leagueKey);
+  if (cached && cached.expiresAt > Date.now()) return cached.data;
+
+  const json = await yahooGet(`/league/${leagueKey}/settings`, accessToken);
+  const leagueArr = (json as { fantasy_content: { league: unknown[] } }).fantasy_content.league;
+  const settingsResource = leagueArr[1] as { settings: unknown[] };
+  const settings = flattenResource(settingsResource.settings[0]);
+  const rosterPositions = settings.roster_positions as { roster_position: Record<string, unknown> }[];
+
+  const capacity = rosterPositions.reduce((sum, { roster_position: rp }) => {
+    const position = String(rp.position);
+    return position.startsWith("IR") ? sum : sum + Number(rp.count);
+  }, 0);
+
+  rosterCapacityCache.set(leagueKey, { data: capacity, expiresAt: Date.now() + ROSTER_SLOTS_CACHE_TTL_MS });
+  return capacity;
+}
+
 export interface YahooRosterPlayer {
   name: string;
   team: string;
@@ -181,6 +208,12 @@ export interface YahooRosterPlayer {
    *  RosterFitPlayer's convention in roster-fit.ts. */
   positions: SkaterPosition[];
   isGoalie: boolean;
+  /** True when this player currently sits in an IR/IR+ slot - they don't
+   *  count against the league's roster cap while there (see
+   *  getLeagueRosterCapacity), so dropping them doesn't free real roster
+   *  space, and having one there might already mean you have room to add
+   *  without dropping anyone at all. */
+  isOnIR: boolean;
 }
 
 /** Which team_key in this league belongs to the connected user - found via
@@ -199,17 +232,28 @@ export async function getMyTeamKey(leagueKey: string, accessToken: string): Prom
 
 function parsePlayerResource(flat: Record<string, unknown>): YahooRosterPlayer {
   const eligible = (flat.eligible_positions as { position: string }[]) ?? [];
+  // Only present on a roster fetch (not on the free-agent list, since an
+  // unrostered player has no current slot) - flattened the same way as any
+  // other nested Yahoo resource.
+  const selectedPosition = flat.selected_position
+    ? (flattenResource(flat.selected_position).position as string | undefined)
+    : undefined;
   return {
     name: String((flat.name as { full: string }).full),
     team: normalizeYahooTeam(String(flat.editorial_team_abbr)),
     positions: eligible.map((p) => p.position).filter((p): p is SkaterPosition => SKATER_POSITIONS.has(p)),
     isGoalie: eligible.some((p) => p.position === "G"),
+    isOnIR: Boolean(selectedPosition?.startsWith("IR")),
   };
 }
 
 /** The connected user's full roster in this league (active + bench + IR
  *  all together - matches this app's existing "no fixed active/reserve
- *  split, the matching decides who starts each day" model). */
+ *  split, the matching decides who starts each day" model). Includes
+ *  goalies (isGoalie: true, positions: []) so they're selectable as a drop
+ *  candidate - callers doing skater roster-fit math should filter them out
+ *  first, since an empty positions array would otherwise look eligible for
+ *  the universal UTIL slot. */
 export async function getMyRoster(teamKey: string, accessToken: string): Promise<YahooRosterPlayer[]> {
   const json = await yahooGet(`/team/${teamKey}/roster`, accessToken);
   const teamArr = (json as { fantasy_content: { team: unknown[] } }).fantasy_content.team;
@@ -217,7 +261,7 @@ export async function getMyRoster(teamKey: string, accessToken: string): Promise
   const players = collectionValues(rosterResource.roster["0"].players);
   return players
     .map((p) => parsePlayerResource(flattenResource((p as { player: unknown }).player)))
-    .filter((p) => !p.isGoalie && p.positions.length > 0);
+    .filter((p) => p.isGoalie || p.positions.length > 0);
 }
 
 export interface YahooFreeAgent {
