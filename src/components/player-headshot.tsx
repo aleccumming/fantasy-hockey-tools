@@ -68,7 +68,12 @@ export function PlayerHeadshot({
           left: -offsetX,
           top: -offsetY,
         }}
-        className="max-w-none object-cover"
+        // Yahoo's thumbnail is portrait (taller than wide), and forcing it
+        // into a square crops top and bottom - object-cover's default
+        // center crop cuts into the hair/top of the head since the face
+        // sits in the upper portion of the frame, not dead center.
+        // object-top biases the crop to keep the top intact instead.
+        className={`max-w-none object-cover ${isPreCropped ? "object-top" : ""}`}
       />
     </span>
   );
