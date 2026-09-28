@@ -216,18 +216,18 @@ export function SkaterRankingsTable({
           <col style={{ width: "3%" }} />
           <col style={{ width: "5%" }} />
           <col style={{ width: `${playerWidth}%` }} />
-          <col style={{ width: "3%" }} />
-          <col style={{ width: "3.5%" }} />
-          <col style={{ width: "3%" }} />
-          <col style={{ width: "3%" }} />
-          <col style={{ width: "3%" }} />
-          <col style={{ width: "3%" }} />
-          <col style={{ width: "4.5%" }} />
+          <col style={{ width: "4%" }} />
+          <col style={{ width: "7%" }} />
+          <col style={{ width: "2.5%" }} />
+          <col style={{ width: "2.5%" }} />
+          <col style={{ width: "2.5%" }} />
+          <col style={{ width: "2.5%" }} />
+          <col style={{ width: "4%" }} />
           {METRIC_COLUMNS.map((m) => (
-            <col key={m.key} style={{ width: "4.5%" }} />
+            <col key={m.key} style={{ width: "4.3%" }} />
           ))}
           {LUCK_COLUMNS.map((m) => (
-            <col key={m.key} style={{ width: "4.5%" }} />
+            <col key={m.key} style={{ width: "4.3%" }} />
           ))}
           {extraColumn && <col style={{ width: `${extraColumn.widthPercent}%` }} />}
         </colgroup>
@@ -355,8 +355,8 @@ export function SkaterRankingsTable({
                   </span>
                 </div>
               </td>
-              <td className="px-3 py-2 text-ink-dim">{p.team}</td>
-              <td className="px-3 py-2 text-ink-dim">{p.positions.join("/")}</td>
+              <td className="whitespace-nowrap px-3 py-2 text-ink-dim">{p.team}</td>
+              <td className="whitespace-nowrap px-3 py-2 text-ink-dim">{p.positions.join("/")}</td>
               <td className="border-l border-stripe px-2 py-2 tabular-nums text-ink-dim">{p.gamesPlayed}</td>
               <td className="px-2 py-2 tabular-nums text-ink-dim">{p.goals}</td>
               <td className="px-2 py-2 tabular-nums text-ink-dim">{p.assists}</td>

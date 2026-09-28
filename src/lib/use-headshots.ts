@@ -1,7 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { HeadshotMap } from "./headshots";
+import { normalizeName } from "./name-matching";
+import { useYahooPlayerEligibility } from "./use-yahoo-player-eligibility";
 
 let cachedPromise: Promise<HeadshotMap> | null = null;
 
@@ -21,9 +23,14 @@ function loadHeadshots(): Promise<HeadshotMap> {
 }
 
 /** Shared across every caller - the map is fetched once per page load and
- *  reused, since it's the same 32-team roster lookup no matter who asks. */
+ *  reused, since it's the same 32-team roster lookup no matter who asks.
+ *  Yahoo's own player thumbnails (already tightly cropped to the face, from
+ *  the same cached eligibility data used for positions) take priority over
+ *  the NHL's raw mugshots wherever available - see player-headshot.tsx for
+ *  why the two need different crop handling. */
 export function useHeadshots(): HeadshotMap {
   const [map, setMap] = useState<HeadshotMap>({});
+  const { eligibility } = useYahooPlayerEligibility();
 
   useEffect(() => {
     let cancelled = false;
@@ -39,5 +46,12 @@ export function useHeadshots(): HeadshotMap {
     };
   }, []);
 
-  return map;
+  return useMemo(() => {
+    if (!eligibility) return map;
+    const merged = { ...map };
+    for (const p of eligibility) {
+      if (p.headshotUrl) merged[normalizeName(p.name)] = p.headshotUrl;
+    }
+    return merged;
+  }, [map, eligibility]);
 }

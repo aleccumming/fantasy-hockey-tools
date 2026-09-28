@@ -214,6 +214,11 @@ export interface YahooRosterPlayer {
    *  space, and having one there might already mean you have room to add
    *  without dropping anyone at all. */
   isOnIR: boolean;
+  /** Yahoo's own small player-thumbnail image (already tightly cropped to
+   *  the face, unlike the NHL's raw mugshots this app otherwise uses - see
+   *  player-headshot.tsx) - absent only if Yahoo's response itself omitted
+   *  it, which hasn't been observed in practice. */
+  headshotUrl?: string;
 }
 
 /** Which team_key in this league belongs to the connected user - found via
@@ -238,12 +243,16 @@ function parsePlayerResource(flat: Record<string, unknown>): YahooRosterPlayer {
   const selectedPosition = flat.selected_position
     ? (flattenResource(flat.selected_position).position as string | undefined)
     : undefined;
+  // image_url is a plain string field; headshot is the same picture nested
+  // as {url, size} - either can be present depending on the resource.
+  const headshotUrl = (flat.image_url as string | undefined) ?? (flat.headshot as { url?: string } | undefined)?.url;
   return {
     name: String((flat.name as { full: string }).full),
     team: normalizeYahooTeam(String(flat.editorial_team_abbr)),
     positions: eligible.map((p) => p.position).filter((p): p is SkaterPosition => SKATER_POSITIONS.has(p)),
     isGoalie: eligible.some((p) => p.position === "G"),
     isOnIR: Boolean(selectedPosition?.startsWith("IR")),
+    headshotUrl,
   };
 }
 
@@ -308,6 +317,7 @@ export interface YahooPlayerEligibility {
   team: string;
   positions: SkaterPosition[];
   isGoalie: boolean;
+  headshotUrl?: string;
 }
 
 const PLAYER_UNIVERSE_PAGE_SIZE = 25;

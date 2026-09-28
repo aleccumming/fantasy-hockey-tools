@@ -37,16 +37,16 @@ export function PlayerHeadshot({
     );
   }
 
-  // NHL headshots are framed head-and-shoulders with a fair bit of chest/
-  // jersey below the face - render the image oversized and shifted up within
-  // a clipped circle so the crop favors the face instead of the torso. Uses
-  // plain pixel offsets (no % positioning combined with a transform) so
-  // there's no sub-pixel rounding gap at small avatar sizes that would let
-  // the wrapper's own background show through as a stray ring. No background
-  // color on the wrapper itself either - these are transparent-background
-  // cutout PNGs, so a filled wrapper would show as a mismatched disc behind
-  // the player on any colored surface (e.g. the draft board's position tiles).
-  const zoom = 1.7;
+  // The NHL's own raw mugshots are framed head-and-shoulders with a fair
+  // bit of chest/jersey below the face, so they need to be rendered
+  // oversized and shifted up within a clipped circle for the crop to favor
+  // the face instead of the torso. Yahoo's thumbnails (used preferentially
+  // - see use-headshots.ts) are already tightly, correctly cropped by
+  // Yahoo's own image service, so applying that same zoom would just cut
+  // off the top of the face - only zoom for the NHL source, identified by
+  // hostname since HeadshotMap is a flat url-by-name map either way.
+  const isPreCropped = url.includes("yimg.com");
+  const zoom = isPreCropped ? 1 : 1.7;
   const imgSize = Math.round(size * zoom);
   const offsetX = Math.round((imgSize - size) / 2);
   const offsetY = Math.round((imgSize - size) * 0.24);
