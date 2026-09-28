@@ -38,7 +38,12 @@ export function DraftWorkspace({ draftName }: { draftName: string }) {
         <Link href="/draft" className="text-xs font-medium text-ink-faint hover:text-rink-blue">
           &larr; All Drafts
         </Link>
-        <SaveStatusIndicator />
+        <div className="flex items-center gap-3">
+          <Link href="/how-to-use" className="text-xs font-medium text-ink-faint hover:text-rink-blue">
+            How to Use
+          </Link>
+          <SaveStatusIndicator />
+        </div>
       </div>
       <h1 className="mt-1 font-display text-3xl font-extrabold uppercase tracking-wide text-ink">
         {draftName}

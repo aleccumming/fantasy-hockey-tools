@@ -42,8 +42,11 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
               <Link href="/draft" className="hover:text-rink-blue">
                 Draft Assistant
               </Link>
-              <Link href="/how-to-use" className="hover:text-rink-blue">
-                How to Use
+              <Link href="/players" className="hover:text-rink-blue">
+                Players
+              </Link>
+              <Link href="/goalies" className="hover:text-rink-blue">
+                Goalies
               </Link>
             </nav>
             <div className="ml-auto flex items-center gap-3 text-sm">

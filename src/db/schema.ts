@@ -62,6 +62,27 @@ export const verificationTokens = pgTable(
   (vt) => [primaryKey({ columns: [vt.identifier, vt.token] })]
 );
 
+// A user's connected Yahoo Fantasy account - separate from the `accounts`
+// table above, which is Auth.js's own identity-provider table (Google, used
+// for site sign-in). This is a data-access connection, not a login method:
+// one Yahoo Fantasy account linked per user, used purely to call the Yahoo
+// Fantasy Sports API on their behalf (read their own league's rosters/free
+// agents). Reconnecting overwrites the existing row.
+export const yahooConnections = pgTable("yahoo_connections", {
+  userId: text("user_id")
+    .primaryKey()
+    .references(() => users.id, { onDelete: "cascade" }),
+  accessToken: text("access_token").notNull(),
+  refreshToken: text("refresh_token").notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  // e.g. "477.l.121129" - which of the user's leagues (there can be several)
+  // Drop & Replace and the Unowned toggle should read from. Null until they
+  // pick one, or right after connecting with just one league to auto-pick.
+  activeLeagueKey: text("active_league_key"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 // App data. One row per draft, owned by a user. `state` mirrors the
 // DraftStoreState shape from src/lib/types.ts as an opaque JSON blob -
 // see the "Accounts + Multi-Draft Foundation" plan for why this isn't

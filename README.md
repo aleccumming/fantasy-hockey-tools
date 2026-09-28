@@ -119,5 +119,4 @@ server route with in-memory caching.
 
 ## Roadmap
 
-- Weekly streamer suggestions
-- Trade recommender
+See [ROADMAP.md](./ROADMAP.md).

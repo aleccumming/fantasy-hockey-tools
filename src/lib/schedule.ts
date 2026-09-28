@@ -97,6 +97,75 @@ function bucketRangesForSeason(currentSeason: number) {
   };
 }
 
+/** Monday-Sunday week containing `referenceDate` (defaults to today), as
+ *  "YYYY-MM-DD" bounds - a reasonable default weekly-matchup period until a
+ *  specific league's actual scoring-period dates are available (e.g. via a
+ *  Yahoo league integration). */
+export function currentWeekRange(referenceDate = new Date()): { start: string; end: string } {
+  const day = referenceDate.getDay(); // 0 = Sunday .. 6 = Saturday
+  const diffToMonday = day === 0 ? -6 : 1 - day;
+  const monday = new Date(referenceDate);
+  monday.setDate(referenceDate.getDate() + diffToMonday);
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  const fmt = (d: Date) => d.toISOString().slice(0, 10);
+  return { start: fmt(monday), end: fmt(sunday) };
+}
+
+/** Every game date (sorted) each team plays within an arbitrary date range -
+ *  the basis for "which streamer fits the most games into your roster this
+ *  week" (games.length gives the count; the dates themselves let the UI
+ *  show which specific days a team plays). Reuses the same per-team
+ *  schedule fetch (and its 12h cache) the season-bucket analysis above
+ *  already relies on. */
+export async function getGameDatesInRangeByTeam(
+  start: string,
+  end: string
+): Promise<Record<string, string[]>> {
+  const results = await Promise.all(
+    NHL_TEAMS.map(async (team) => {
+      const { games } = await fetchTeamSchedule(team);
+      const dates = games
+        .filter((g) => inRange(g.gameDate, start, end))
+        .map((g) => g.gameDate)
+        .sort();
+      return { team, dates };
+    })
+  );
+  return Object.fromEntries(results.map(({ team, dates }) => [team, dates]));
+}
+
+export interface UpcomingGame {
+  date: string;
+  opponent: string;
+  isHome: boolean;
+}
+
+/** Every team's games (sorted by date) within a date range, with opponent
+ *  and home/away - the richer counterpart to getGameDatesInRangeByTeam
+ *  above, needed anywhere a matchup itself matters (e.g. goalie spot-start
+ *  win probability), not just the game count. */
+export async function getUpcomingGamesByTeam(
+  start: string,
+  end: string
+): Promise<Record<string, UpcomingGame[]>> {
+  const results = await Promise.all(
+    NHL_TEAMS.map(async (team) => {
+      const { games } = await fetchTeamSchedule(team);
+      const upcoming = games
+        .filter((g) => inRange(g.gameDate, start, end))
+        .map((g) => ({
+          date: g.gameDate,
+          opponent: g.homeTeam.abbrev === team ? g.awayTeam.abbrev : g.homeTeam.abbrev,
+          isHome: g.homeTeam.abbrev === team,
+        }))
+        .sort((a, b) => a.date.localeCompare(b.date));
+      return { team, upcoming };
+    })
+  );
+  return Object.fromEntries(results.map(({ team, upcoming }) => [team, upcoming]));
+}
+
 export async function getScheduleAnalysis(
   forceRefresh = false
 ): Promise<ScheduleAnalysis> {
