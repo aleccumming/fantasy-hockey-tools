@@ -56,6 +56,15 @@ const MIN_TOI_OPTIONS = [
   { value: 12, label: "12+ min/game" },
   { value: 15, label: "15+ min/game" },
 ];
+// Only meaningful for the Season window - Last 5/Last 10 already cap a
+// player's possible GP at the window size, so a GP floor there would just
+// duplicate "played every game" rather than filter out early-season noise.
+const MIN_GP_OPTIONS = [
+  { value: 0, label: "Any" },
+  { value: 5, label: "5+ GP" },
+  { value: 10, label: "10+ GP" },
+  { value: 20, label: "20+ GP" },
+];
 
 export function PlayerEvaluatorBoard({ activeLeagueKey }: { activeLeagueKey: string | null }) {
   const [pageTab, setPageTab] = useState<PageTab>("rankings");
@@ -64,6 +73,7 @@ export function PlayerEvaluatorBoard({ activeLeagueKey }: { activeLeagueKey: str
   const [positionFilters, setPositionFilters] = useState<Set<Position>>(new Set());
   const [teamFilters, setTeamFilters] = useState<Set<string>>(new Set());
   const [minToi, setMinToi] = useState(0);
+  const [minGp, setMinGp] = useState(0);
   const [nameQuery, setNameQuery] = useState("");
   const [ownershipFilter, setOwnershipFilter] = useState<OwnershipFilter>("all");
   const [player1, setPlayer1] = useState<string | null>(null);
@@ -96,6 +106,8 @@ export function PlayerEvaluatorBoard({ activeLeagueKey }: { activeLeagueKey: str
       }
       if (teamFilters.size > 0 && !teamFilters.has(p.team)) return false;
       if (p.toiPerGame < minToi) return false;
+      // Min GP only applies to the Season window - see MIN_GP_OPTIONS comment.
+      if (windowKey === "season" && p.gamesPlayed < minGp) return false;
       if (query && !p.name.toLowerCase().includes(query)) return false;
       if (ownershipFilter === "unowned") {
         const key = normalizeName(p.name);
@@ -103,7 +115,19 @@ export function PlayerEvaluatorBoard({ activeLeagueKey }: { activeLeagueKey: str
       }
       return true;
     });
-  }, [ranked, group, positionFilters, teamFilters, minToi, nameQuery, ownershipFilter, roster, yahooFreeAgents]);
+  }, [
+    ranked,
+    group,
+    positionFilters,
+    teamFilters,
+    minToi,
+    minGp,
+    windowKey,
+    nameQuery,
+    ownershipFilter,
+    roster,
+    yahooFreeAgents,
+  ]);
 
   // Compare tab: independent of Rankings' filters/window - ranks all three
   // windows up front so a player picked here shows Last 5 / Last 10 /
@@ -395,6 +419,22 @@ export function PlayerEvaluatorBoard({ activeLeagueKey }: { activeLeagueKey: str
                 ))}
               </select>
             </label>
+            {windowKey === "season" && (
+              <label className="flex items-center gap-1.5 text-xs font-medium text-ink-dim">
+                Min GP
+                <select
+                  value={minGp}
+                  onChange={(e) => setMinGp(Number(e.target.value))}
+                  className="rounded border border-line bg-surface px-1.5 py-1 text-ink focus:border-rink-blue focus:outline-none"
+                >
+                  {MIN_GP_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
           </div>
 
           {ownershipFilter === "unowned" && !yahooFreeAgents && (

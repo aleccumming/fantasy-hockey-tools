@@ -104,7 +104,7 @@ export interface ExtraColumn {
 // player rows) rather than separate columns. Player's width is solved for
 // below so the total always comes out to 100 regardless of whether the
 // extra column is present.
-const FIXED_COLUMNS_PERCENT = 75.5;
+const FIXED_COLUMNS_PERCENT = 86.1;
 
 type SortKey =
   | "name"
@@ -231,19 +231,19 @@ export function SkaterRankingsTable({
           <col style={{ width: "3%" }} />
           <col style={{ width: "6.5%" }} />
           <col style={{ width: `${playerWidth}%` }} />
-          <col style={{ width: "2.5%" }} />
-          <col style={{ width: "2.5%" }} />
-          <col style={{ width: "2.5%" }} />
-          <col style={{ width: "2.5%" }} />
-          <col style={{ width: "4%" }} />
+          <col style={{ width: "3.5%" }} />
+          <col style={{ width: "3.5%" }} />
+          <col style={{ width: "3.5%" }} />
+          <col style={{ width: "3.5%" }} />
+          <col style={{ width: "5%" }} />
           {METRIC_COLUMNS.map((m) => (
-            <col key={m.key} style={{ width: "4.3%" }} />
+            <col key={m.key} style={{ width: "4.8%" }} />
           ))}
           {LUCK_COLUMNS.map((m) => (
-            <col key={m.key} style={{ width: "4.3%" }} />
+            <col key={m.key} style={{ width: "4.5%" }} />
           ))}
           {BANGERS_COLUMNS.map((m) => (
-            <col key={m.key} style={{ width: "3%" }} />
+            <col key={m.key} style={{ width: "3.5%" }} />
           ))}
           {extraColumn && <col style={{ width: `${extraColumn.widthPercent}%` }} />}
         </colgroup>
@@ -269,7 +269,7 @@ export function SkaterRankingsTable({
               className="border-l border-stripe px-2 py-1 text-center"
               title="Categories-league value (hits/blocks/PIM) - not part of C-Score, which is tuned for points leagues"
             >
-              Bangers
+              Banger Stats
             </th>
             {extraColumn && (
               <th className="border-l border-stripe px-2 py-1 text-center">{extraColumn.groupLabel}</th>
