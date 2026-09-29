@@ -114,20 +114,25 @@ Players' tab bar.
 
 ## Scoring formats
 
-- [ ] Support categories (roto/head-to-head-categories, a.k.a. "bangers")
-      leagues, not just points leagues. C-Score and the whole ranking system
-      right now are tuned toward points-league value (shot- and chance-
-      generation metrics). A categories league also cares heavily about
-      hits, blocks, and PIM (and separately, for streaming decisions,
-      whichever specific categories that league actually scores - a league
-      might not even use all of G/A/PPP/SOG/HIT/BLK/PIM). For Drop & Replace
-      specifically, streaming adds need to be judged against the categories
-      that matter for that team's build (e.g. a hits/blocks-needy team
-      should surface bangers over pure shot-generation forwards even at a
-      lower C-Score). Needs real design thought: possibly a
-      league-scoring-format setting (categories used + punt strategy) that
-      reweights or supplements C-Score, not a full replacement of it, since
-      points-league value should stay unaffected.
+- [x] First step: Hits/Blocks/PIM ("Bangers") now show as their own column
+      group on Rankings, far right after Luck/Regression. Real per-window
+      totals, parsed from columns NST's individual-stats report already
+      includes but this app never read before (verified live, individually
+      <th>-by-<th> against known values - e.g. Kiefer Sherwood led the
+      league in hits, Jaccob Slavin in blocks - after an initial grouped-
+      header reading turned out to be off by one column and gave
+      plausible-looking but wrong numbers). See `NstIndividualRow` in
+      `nst-client.ts` and `BANGERS_COLUMNS` in `skater-rankings-table.tsx`.
+- [ ] Still not real categories-league SUPPORT, just visibility. C-Score and
+      the whole ranking system are still tuned toward points-league value
+      (shot- and chance-generation metrics) - Hits/Blocks/PIM are shown but
+      don't affect ranking, Drop & Replace's candidate ordering, or which
+      streamers get surfaced. A league might not even use all of
+      G/A/PPP/SOG/HIT/BLK/PIM, or might punt some categories entirely.
+      Needs real design thought: possibly a league-scoring-format setting
+      (categories used + punt strategy) that reweights or supplements
+      C-Score for categories leagues specifically, without changing
+      anything for points-league value.
 
 ## New tools
 

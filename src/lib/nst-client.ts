@@ -49,6 +49,15 @@ export interface NstIndividualRow extends NstRowBase {
   ixg: number;
   icf: number;
   iscf: number;
+  // "Bangers" category totals (categories-league scoring, not points-league
+  // value) - real totals over the queried window, same as goals/assists.
+  // Column positions confirmed live against NST's actual response, not
+  // guessed: 21=PIM, 29=Hits, 31=Shots Blocked (individually verified
+  // <th>-by-<th> against real values - e.g. Tom Wilson's 233 hits/81 GP -
+  // an earlier grouped-header reading was off by one column).
+  pim: number;
+  hits: number;
+  blocks: number;
 }
 
 export interface NstOnIceRow extends NstRowBase {
@@ -143,7 +152,7 @@ async function fetchNst(stdoi: "std" | "oi", opts: NstQueryOptions): Promise<str
 // Column indices below are positional, matching NST's fixed table layout
 // (index 0 is the row-number column, which we skip).
 function parseIndividualRow(cells: string[]): NstIndividualRow | null {
-  if (cells.length < 18 || !cells[1]) return null;
+  if (cells.length < 32 || !cells[1]) return null;
   return {
     name: cells[1],
     team: normalizeTeam(cells[2]),
@@ -158,6 +167,9 @@ function parseIndividualRow(cells: string[]): NstIndividualRow | null {
     ixg: Number(cells[14]) || 0,
     icf: Number(cells[15]) || 0,
     iscf: Number(cells[17]) || 0,
+    pim: Number(cells[21]) || 0,
+    hits: Number(cells[29]) || 0,
+    blocks: Number(cells[31]) || 0,
   };
 }
 

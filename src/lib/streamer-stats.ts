@@ -15,6 +15,12 @@ export interface SkaterRateStats {
   goals: number;
   assists: number;
   toiPerGame: number;
+  /** "Bangers" category totals over the window - categories-league scoring
+   *  value (hits/blocks/PIM), not points-league value, so kept alongside
+   *  the box score rather than folded into the composite C-Score ranking. */
+  pim: number;
+  hits: number;
+  blocks: number;
   shotsPer60: number;
   iCFPer60: number;
   iSCFPer60: number;

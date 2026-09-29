@@ -25,6 +25,9 @@ export interface SkaterWindowRow {
   scf: number;
   xgf: number;
   onIceShPct: number;
+  pim: number;
+  hits: number;
+  blocks: number;
 }
 
 /** Fetches one window's individual + on-ice stats and merges them by
@@ -58,6 +61,9 @@ export async function fetchSkaterWindow(opts: NstQueryOptions): Promise<Map<stri
       scf: oi.scf,
       xgf: oi.xgf,
       onIceShPct: oi.onIceShPct,
+      pim: ind.pim,
+      hits: ind.hits,
+      blocks: ind.blocks,
     });
   }
   return rows;
@@ -84,6 +90,9 @@ export function toSkaterRateStats(
     goals: row.goals,
     assists: row.assists,
     toiPerGame: row.gp > 0 ? row.toi / row.gp : 0,
+    pim: row.pim,
+    hits: row.hits,
+    blocks: row.blocks,
     shotsPer60: toPer60(row.shots, row.toi),
     iCFPer60: toPer60(row.icf, row.toi),
     iSCFPer60: toPer60(row.iscf, row.toi),

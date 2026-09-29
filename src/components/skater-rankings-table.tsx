@@ -45,6 +45,17 @@ export const LUCK_COLUMNS: { key: LuckKey; baselineKey: BaselineKey; label: stri
   { key: "ipp", baselineKey: "baselineIpp", label: "IPP", title: "Individual Points Percentage - share of on-ice team goals the player got a point on" },
 ];
 
+type BangerKey = "hits" | "blocks" | "pim";
+
+/** Categories-league value (hits/blocks/PIM) - irrelevant to points-league
+ *  C-Score, so kept as its own group at the far right rather than mixed
+ *  into the box score or underlying-metrics groups. */
+export const BANGERS_COLUMNS: { key: BangerKey; label: string; title: string }[] = [
+  { key: "hits", label: "HIT", title: "Hits" },
+  { key: "blocks", label: "BLK", title: "Shots blocked" },
+  { key: "pim", label: "PIM", title: "Penalty minutes" },
+];
+
 // Below this point-difference from baseline, treat it as normal variance -
 // no shading at all. At/beyond MAX_LUCK_DELTA points, shading maxes out;
 // everything in between scales continuously, so the color reflects how
@@ -93,7 +104,7 @@ export interface ExtraColumn {
 // player rows) rather than separate columns. Player's width is solved for
 // below so the total always comes out to 100 regardless of whether the
 // extra column is present.
-const FIXED_COLUMNS_PERCENT = 66.5;
+const FIXED_COLUMNS_PERCENT = 75.5;
 
 type SortKey =
   | "name"
@@ -107,6 +118,7 @@ type SortKey =
   | "toiPerGame"
   | (typeof METRIC_COLUMNS)[number]["key"]
   | LuckKey
+  | BangerKey
   | "extra";
 
 type SortDir = "asc" | "desc";
@@ -144,6 +156,9 @@ function sortValue(p: RankedSkaterStats, key: SortKey, extraColumn?: ExtraColumn
     case "shootingPct":
     case "onIceShPct":
     case "ipp":
+    case "hits":
+    case "blocks":
+    case "pim":
       return p[key];
     case "extra":
       return extraColumn?.sortValue?.(p) ?? 0;
@@ -227,6 +242,9 @@ export function SkaterRankingsTable({
           {LUCK_COLUMNS.map((m) => (
             <col key={m.key} style={{ width: "4.3%" }} />
           ))}
+          {BANGERS_COLUMNS.map((m) => (
+            <col key={m.key} style={{ width: "3%" }} />
+          ))}
           {extraColumn && <col style={{ width: `${extraColumn.widthPercent}%` }} />}
         </colgroup>
         <thead>
@@ -245,6 +263,13 @@ export function SkaterRankingsTable({
             </th>
             <th colSpan={LUCK_COLUMNS.length} className="border-l border-stripe px-2 py-1 text-center">
               Luck / Regression
+            </th>
+            <th
+              colSpan={BANGERS_COLUMNS.length}
+              className="border-l border-stripe px-2 py-1 text-center"
+              title="Categories-league value (hits/blocks/PIM) - not part of C-Score, which is tuned for points leagues"
+            >
+              Bangers
             </th>
             {extraColumn && (
               <th className="border-l border-stripe px-2 py-1 text-center">{extraColumn.groupLabel}</th>
@@ -321,6 +346,17 @@ export function SkaterRankingsTable({
                 <SortIndicator active={sortKey === m.key} dir={sortDir} />
               </th>
             ))}
+            {BANGERS_COLUMNS.map((m, i) => (
+              <th
+                key={m.key}
+                className={`cursor-pointer select-none px-2 py-2 text-center normal-case hover:text-ink ${i === 0 ? "border-l border-stripe" : ""}`}
+                onClick={() => handleSort(m.key)}
+                title={m.title}
+              >
+                {m.label}
+                <SortIndicator active={sortKey === m.key} dir={sortDir} />
+              </th>
+            ))}
             {extraColumn && (
               <th
                 className={`border-l border-stripe px-3 py-2 ${
@@ -381,6 +417,14 @@ export function SkaterRankingsTable({
                   </td>
                 );
               })}
+              {BANGERS_COLUMNS.map((m, colIdx) => (
+                <td
+                  key={m.key}
+                  className={`px-2 py-2 text-center tabular-nums text-ink-dim ${colIdx === 0 ? "border-l border-stripe" : ""}`}
+                >
+                  {p[m.key]}
+                </td>
+              ))}
               {extraColumn && (
                 <td className="border-l border-stripe px-3 py-2">{extraColumn.render(p)}</td>
               )}
