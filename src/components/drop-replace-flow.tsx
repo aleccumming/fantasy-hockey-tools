@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { computeCompositeRankingsByGroup } from "@/lib/streamer-stats";
 import { SAMPLE_SKATER_STATS } from "@/lib/streamer-sample-data";
-import { computeFitDays, computeDayLineup, SAMPLE_ROSTER_SLOTS } from "@/lib/roster-fit";
+import { computeFitDays, SAMPLE_ROSTER_SLOTS } from "@/lib/roster-fit";
 import { useMyRoster } from "@/lib/use-my-roster";
 import { useYahooRoster } from "@/lib/use-yahoo-roster";
 import { useYahooFreeAgents } from "@/lib/use-yahoo-free-agents";
@@ -242,48 +242,32 @@ export function DropReplaceFlow({
     return map;
   }, [candidates, rangeDays, schedule, rosterForFit, rosterSlots]);
 
-  // The flip side of fitDaysByName: for each player CURRENTLY on the
-  // roster, how many of the selected range's days they'd actually start if
-  // kept - i.e. what you'd be giving up by dropping them.
+  // The flip side of fitDaysByName - only computed for whichever player(s)
+  // are actually selected to drop (not the whole roster at once), and only
+  // for them: how many of the selected range's days they'd actually start
+  // if kept, i.e. what you'd be giving up by dropping them.
   //
-  // This is NOT a "does adding one more body increase the headcount"
-  // question (that's what fitDaysByName asks, and it's the right question
-  // for a free agent filling an already-opened slot) - a mostly-full
-  // roster almost always has *someone* who can fill a raw slot count,
-  // which made an earlier version of this feature nonsensical for good
-  // players (a true first-overall-pick-caliber player showed almost no
-  // "games lost," the same as a 4th-liner would, because the math never
-  // knew who was actually good).
-  //
-  // Instead: for each day, take everyone on the roster who's playing,
-  // sort them best-to-worst by C-Score rank, and fill slots in that
-  // order (computeDayLineup, unchanged matching logic, just fed a
-  // value-sorted list). That's how a real manager actually sets a lineup
-  // - better players claim slots first, worse players get squeezed out of
-  // limited flex/UTIL room when it's tight. A player counts as "lost" on
-  // any day they land a slot in that sorted result.
+  // Deliberately NOT ranked by C-Score or TOI or anything else - an
+  // earlier version tried sorting the roster by value to decide "who wins
+  // a tight slot," but that requires picking a signal to judge every OTHER
+  // rostered player by, which is exactly the kind of reactive, subjective
+  // call (a star in a slump, a hot low-minute streamer) this app avoids
+  // making on a user's behalf elsewhere too. Scoping this to only the
+  // player being evaluated sidesteps the question entirely: it's the same
+  // "does adding them back increase the headcount" test as fitDaysByName
+  // uses for free agents, just run against the CURRENT roster instead of
+  // one with a drop already applied. No ranking of teammates required.
   const lostGamesByName = useMemo(() => {
     const map = new Map<string, string[]>();
+    if (dropCandidates.size === 0) return map;
     const gameDatesByTeam = schedule?.gameDatesByTeam ?? {};
-    // Lower compositeRank = better. No stats this window (e.g. a brand-new
-    // callup) sorts last - benefit of the doubt goes to players with an
-    // established track record, not an unknown.
-    const rankOf = (name: string) => byName.get(name)?.compositeRank ?? Infinity;
-    const byValue = [...skaterRoster].sort((a, b) => rankOf(a.name) - rankOf(b.name));
-
-    for (const day of rangeDays) {
-      const playingToday = byValue.filter((p) => (gameDatesByTeam[p.team] ?? []).includes(day));
-      const lineup = computeDayLineup(playingToday, rosterSlots);
-      const starters = new Set(lineup.map((slot) => slot.playerName).filter((n): n is string => n !== null));
-      for (const p of playingToday) {
-        if (!starters.has(p.name)) continue;
-        const dates = map.get(p.name);
-        if (dates) dates.push(day);
-        else map.set(p.name, [day]);
-      }
+    for (const p of skaterRoster) {
+      if (!dropCandidates.has(p.name)) continue;
+      const others = skaterRoster.filter((o) => o.name !== p.name);
+      map.set(p.name, computeFitDays(p.team, p.positions, rangeDays, gameDatesByTeam, others, rosterSlots));
     }
     return map;
-  }, [skaterRoster, rangeDays, schedule, rosterSlots, byName]);
+  }, [skaterRoster, dropCandidates, rangeDays, schedule, rosterSlots]);
 
   const gamesOptions = useMemo(() => {
     const counts = new Set<number>();
@@ -401,21 +385,27 @@ export function DropReplaceFlow({
               <div className="mt-2 text-xs text-ink-dim">
                 C-Score {stats ? stats.compositeRank.toFixed(1) : "N/A"}
               </div>
-              {!p.isGoalie && (
-                <div
-                  className="mt-1.5"
-                  title={`Games this player could start from ${rangeStart} to ${rangeEnd} if you keep them - 0 means dropping them costs nothing in this range (bye week, or no room in your lineup anyway)`}
-                >
-                  <span className="text-[10px] font-semibold uppercase tracking-wide text-ink-faint">
-                    If dropped, you lose
-                  </span>
-                  <FitDayIndicator fitDates={lostGamesByName.get(p.name) ?? []} rangeDays={rangeDays} label="start" />
-                </div>
-              )}
               {dropping && (
-                <div className="mt-2 rounded bg-rink-red px-2 py-1 text-center text-xs font-bold text-white">
-                  Dropping
-                </div>
+                <>
+                  {!p.isGoalie && (
+                    <div
+                      className="mt-1.5"
+                      title={`Games this player could start from ${rangeStart} to ${rangeEnd} if you kept them - 0 means dropping them costs nothing in this range (bye week, or no room in your lineup anyway)`}
+                    >
+                      <span className="text-[10px] font-semibold uppercase tracking-wide text-ink-faint">
+                        You lose
+                      </span>
+                      <FitDayIndicator
+                        fitDates={lostGamesByName.get(p.name) ?? []}
+                        rangeDays={rangeDays}
+                        label="start"
+                      />
+                    </div>
+                  )}
+                  <div className="mt-2 rounded bg-rink-red px-2 py-1 text-center text-xs font-bold text-white">
+                    Dropping
+                  </div>
+                </>
               )}
             </button>
           );
