@@ -37,7 +37,18 @@ function datesInRange(start: string, end: string): string[] {
 
 const MAX_DAY_BOXES = 7;
 
-function FitDayIndicator({ fitDates, rangeDays }: { fitDates: string[]; rangeDays: string[] }) {
+function FitDayIndicator({
+  fitDates,
+  rangeDays,
+  label = "fit",
+}: {
+  fitDates: string[];
+  rangeDays: string[];
+  /** Singular noun for the count, e.g. "fit" -> "3 fits" or "start" -> "3
+   *  starts" - same dots-plus-count display serves both the free-agent
+   *  candidate "Fits" column and the roster grid's "games you'd lose". */
+  label?: string;
+}) {
   const fitSet = new Set(fitDates);
   const showDots = rangeDays.length <= MAX_DAY_BOXES;
   return (
@@ -54,7 +65,8 @@ function FitDayIndicator({ fitDates, rangeDays }: { fitDates: string[]; rangeDay
         </div>
       )}
       <span className="shrink-0 whitespace-nowrap text-xs font-semibold text-ink-dim">
-        {fitDates.length} fit{fitDates.length === 1 ? "" : "s"}
+        {fitDates.length} {label}
+        {fitDates.length === 1 ? "" : "s"}
       </span>
     </div>
   );
@@ -230,6 +242,23 @@ export function DropReplaceFlow({
     return map;
   }, [candidates, rangeDays, schedule, rosterForFit, rosterSlots]);
 
+  // The flip side of fitDaysByName: for each player CURRENTLY on the
+  // roster, how many of the selected range's days they'd actually start if
+  // kept - i.e. what you'd be giving up by dropping them. Same bipartite-
+  // matching fit logic, just evaluated against everyone else already on the
+  // roster instead of against a free agent being added. A team on a bye for
+  // the whole range (or a player who'd lose the slot battle to teammates
+  // every day) correctly comes out to 0 - nothing lost by dropping them.
+  const lostGamesByName = useMemo(() => {
+    const map = new Map<string, string[]>();
+    const gameDatesByTeam = schedule?.gameDatesByTeam ?? {};
+    for (const p of skaterRoster) {
+      const others = skaterRoster.filter((o) => o.name !== p.name);
+      map.set(p.name, computeFitDays(p.team, p.positions, rangeDays, gameDatesByTeam, others, rosterSlots));
+    }
+    return map;
+  }, [skaterRoster, rangeDays, schedule, rosterSlots]);
+
   const gamesOptions = useMemo(() => {
     const counts = new Set<number>();
     for (const fits of fitDaysByName.values()) {
@@ -346,6 +375,17 @@ export function DropReplaceFlow({
               <div className="mt-2 text-xs text-ink-dim">
                 C-Score {stats ? stats.compositeRank.toFixed(1) : "N/A"}
               </div>
+              {!p.isGoalie && (
+                <div
+                  className="mt-1.5"
+                  title={`Games this player could start from ${rangeStart} to ${rangeEnd} if you keep them - 0 means dropping them costs nothing in this range (bye week, or no room in your lineup anyway)`}
+                >
+                  <span className="text-[10px] font-semibold uppercase tracking-wide text-ink-faint">
+                    If dropped, you lose
+                  </span>
+                  <FitDayIndicator fitDates={lostGamesByName.get(p.name) ?? []} rangeDays={rangeDays} label="start" />
+                </div>
+              )}
               {dropping && (
                 <div className="mt-2 rounded bg-rink-red px-2 py-1 text-center text-xs font-bold text-white">
                   Dropping
