@@ -142,6 +142,33 @@ Players' tab bar.
       Drop & Replace flow (pick who to drop, see ranked free-agent
       replacements with games-in-range) - currently using a sample roster
       until real Yahoo league data is live (see above).
+- [ ] **Drop & Replace: support planning multiple streamer adds at once.**
+      Today it only evaluates one drop-for-one-add at a time - no way to
+      plan "drop 2, add 2 different streamers" for the week in one pass.
+      The existing fit-days math (`computeFitDays` in `roster-fit.ts`) is
+      explicit about this limit in its own doc comment: it "evaluates one
+      candidate at a time... doesn't jointly optimize multiple simultaneous
+      adds." Concretely, that means checking a second streamer's fit today
+      doesn't know the first streamer already claimed a shared slot on an
+      overlapping day - so stacking up several "good fits" one at a time
+      can overstate how many total starts you're actually picking up,
+      since two candidates who each individually "fit" 4 of 7 days might
+      be fighting over the same slot on 3 of those days.
+      Rough direction (review before building, not settled): add a
+      "staging" mode - after picking drop candidate(s) to free slots, let
+      the user select MULTIPLE add candidates from the ranked list (not
+      just one), then run the existing matching machinery jointly across
+      the whole staged group instead of one at a time (`computeDayLineup`
+      already supports evaluating an arbitrary set of players against a
+      day's slots - it just needs to be fed the staged set). Show a
+      day-by-day breakdown of the staged group so overlap/conflicts are
+      visible (e.g. "these two only both start on 4 of the 7 days - they're
+      competing for the same open slot on the other 3"), not just a single
+      summed total that could hide the double-counting. A "suggest the best
+      combo" mode (search combinations of top-ranked candidates per
+      position to maximize combined starts across the week) would be a
+      nice follow-up but isn't required for a first pass - honest joint
+      accounting plus manual multi-select covers the main ask.
 - [ ] **Trade evaluator / suggester**
 - [ ] **DFS / daily sports betting guide** - surface high-value bets, likely
       built on top of the player evaluator's underlying metrics once that
