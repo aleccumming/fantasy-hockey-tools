@@ -79,7 +79,7 @@ export async function getGoalieStartTracking(forceRefresh = false): Promise<Goal
     return cache.data;
   }
 
-  const season = currentNstSeason();
+  const season = await currentNstSeason();
   const [recentRows, seasonRows] = await Promise.all([
     fetchGoalieStats({
       fromSeason: season,

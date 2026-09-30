@@ -66,8 +66,7 @@ export async function getPlayerEvaluatorStats(forceRefresh = false): Promise<Pla
     return cache.data;
   }
 
-  const season = currentNstSeason();
-  const baselineRange = baselineSeasonRange();
+  const [season, baselineRange] = await Promise.all([currentNstSeason(), baselineSeasonRange()]);
 
   const [last5Rows, last10Rows, seasonRows, baselineRows] = await Promise.all([
     fetchSkaterWindow({

@@ -6,6 +6,7 @@
 // - the key must stay server-side.
 
 import type { SkaterPosition } from "./types";
+import { getCurrentNhlSeasonId } from "./nhl-standings";
 
 const NST_BASE = "https://data.naturalstattrick.com/playerteams.php";
 
@@ -75,26 +76,51 @@ export interface NstQueryOptions {
   situation?: "5v5" | "all";
 }
 
-/** NHL season code NST expects, e.g. "20252026" for the season that begins
- *  Oct 2025. Before that season has any games (Jul-Sept), falls back to the
- *  most recently completed season so "recent form" reflects real, recently
- *  played games instead of a season with no data yet. */
-export function currentNstSeason(referenceDate = new Date()): string {
+/** Calendar-only guess, e.g. "20252026" for a reference date in the season
+ *  that begins Oct 2025 - used only as a last-resort fallback if the live
+ *  lookup below fails, or when a caller explicitly passes a referenceDate
+ *  to ask about a specific date rather than "right now" (the live signal
+ *  only knows "now", so an explicit date always uses this instead). A fixed
+ *  "season starts in October" cutoff is a guess, not a fact - see
+ *  currentNstSeason's own comment for why that guess actually failed. */
+function calendarSeasonGuess(referenceDate: Date): string {
   const year = referenceDate.getFullYear();
   const month = referenceDate.getMonth(); // 0-indexed; 9 = October
   const startYear = month >= 9 ? year : year - 1;
   return `${startYear}${startYear + 1}`;
 }
 
+/** NHL season code NST expects, e.g. "20252026" for the season that begins
+ *  Oct 2025. Pulled from the NHL's own live standings endpoint
+ *  (getCurrentNhlSeasonId in nhl-standings.ts), which is authoritative and
+ *  self-correcting - no hardcoded month boundary to go stale. This used to
+ *  guess "the season starts in October, so treat Jul-Sept as last season"
+ *  - wrong the one year the regular season actually opened in late
+ *  September: real games were being played under the new season while
+ *  every "current season" query here (skater stats, goalie team/start
+ *  tracking) silently kept reading last season's data, including for
+ *  players who'd since been traded (their team showed wherever they
+ *  played LAST year). Falls back to the calendar guess only if the live
+ *  lookup itself fails (network error) - a guess is better than nothing,
+ *  but it's no longer the primary path. */
+export async function currentNstSeason(referenceDate?: Date): Promise<string> {
+  if (referenceDate) return calendarSeasonGuess(referenceDate);
+  try {
+    return await getCurrentNhlSeasonId();
+  } catch {
+    return calendarSeasonGuess(new Date());
+  }
+}
+
 /** A multi-season window ending at the current season, used as a "career"
  *  baseline for the luck/regression columns - not a true full-career figure,
  *  but rookies and short-tenured players still get a meaningful baseline
  *  since NST simply aggregates whatever games exist in the range. */
-export function baselineSeasonRange(referenceDate = new Date()): {
+export async function baselineSeasonRange(referenceDate?: Date): Promise<{
   fromSeason: string;
   thruSeason: string;
-} {
-  const thruSeason = currentNstSeason(referenceDate);
+}> {
+  const thruSeason = await currentNstSeason(referenceDate);
   const thruStartYear = Number(thruSeason.slice(0, 4));
   const fromStartYear = thruStartYear - 2;
   return { fromSeason: `${fromStartYear}${fromStartYear + 1}`, thruSeason };
