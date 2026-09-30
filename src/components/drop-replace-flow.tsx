@@ -443,7 +443,6 @@ export function DropReplaceFlow({
                 headshots={headshots}
                 windowLabel={WINDOW_LABEL}
                 extraColumn={scheduleColumn}
-                abbreviateNames={false}
               />
 
               {results.length === 0 && (

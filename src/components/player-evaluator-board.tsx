@@ -449,7 +449,6 @@ export function PlayerEvaluatorBoard({ activeLeagueKey }: { activeLeagueKey: str
             ranked={filtered}
             headshots={headshots}
             windowLabel={WINDOW_TABS.find((w) => w.key === windowKey)!.windowLabel}
-            abbreviateNames={false}
           />
 
           {filtered.length === 0 && (
