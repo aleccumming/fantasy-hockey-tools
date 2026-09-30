@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { computeCompositeRankingsByGroup } from "@/lib/streamer-stats";
 import { SAMPLE_SKATER_STATS } from "@/lib/streamer-sample-data";
-import { computeFitDays, SAMPLE_ROSTER_SLOTS } from "@/lib/roster-fit";
+import { computeFitDays, computeDayLineup, SAMPLE_ROSTER_SLOTS } from "@/lib/roster-fit";
 import { useMyRoster } from "@/lib/use-my-roster";
 import { useYahooRoster } from "@/lib/use-yahoo-roster";
 import { useYahooFreeAgents } from "@/lib/use-yahoo-free-agents";
@@ -244,20 +244,46 @@ export function DropReplaceFlow({
 
   // The flip side of fitDaysByName: for each player CURRENTLY on the
   // roster, how many of the selected range's days they'd actually start if
-  // kept - i.e. what you'd be giving up by dropping them. Same bipartite-
-  // matching fit logic, just evaluated against everyone else already on the
-  // roster instead of against a free agent being added. A team on a bye for
-  // the whole range (or a player who'd lose the slot battle to teammates
-  // every day) correctly comes out to 0 - nothing lost by dropping them.
+  // kept - i.e. what you'd be giving up by dropping them.
+  //
+  // This is NOT a "does adding one more body increase the headcount"
+  // question (that's what fitDaysByName asks, and it's the right question
+  // for a free agent filling an already-opened slot) - a mostly-full
+  // roster almost always has *someone* who can fill a raw slot count,
+  // which made an earlier version of this feature nonsensical for good
+  // players (a true first-overall-pick-caliber player showed almost no
+  // "games lost," the same as a 4th-liner would, because the math never
+  // knew who was actually good).
+  //
+  // Instead: for each day, take everyone on the roster who's playing,
+  // sort them best-to-worst by C-Score rank, and fill slots in that
+  // order (computeDayLineup, unchanged matching logic, just fed a
+  // value-sorted list). That's how a real manager actually sets a lineup
+  // - better players claim slots first, worse players get squeezed out of
+  // limited flex/UTIL room when it's tight. A player counts as "lost" on
+  // any day they land a slot in that sorted result.
   const lostGamesByName = useMemo(() => {
     const map = new Map<string, string[]>();
     const gameDatesByTeam = schedule?.gameDatesByTeam ?? {};
-    for (const p of skaterRoster) {
-      const others = skaterRoster.filter((o) => o.name !== p.name);
-      map.set(p.name, computeFitDays(p.team, p.positions, rangeDays, gameDatesByTeam, others, rosterSlots));
+    // Lower compositeRank = better. No stats this window (e.g. a brand-new
+    // callup) sorts last - benefit of the doubt goes to players with an
+    // established track record, not an unknown.
+    const rankOf = (name: string) => byName.get(name)?.compositeRank ?? Infinity;
+    const byValue = [...skaterRoster].sort((a, b) => rankOf(a.name) - rankOf(b.name));
+
+    for (const day of rangeDays) {
+      const playingToday = byValue.filter((p) => (gameDatesByTeam[p.team] ?? []).includes(day));
+      const lineup = computeDayLineup(playingToday, rosterSlots);
+      const starters = new Set(lineup.map((slot) => slot.playerName).filter((n): n is string => n !== null));
+      for (const p of playingToday) {
+        if (!starters.has(p.name)) continue;
+        const dates = map.get(p.name);
+        if (dates) dates.push(day);
+        else map.set(p.name, [day]);
+      }
     }
     return map;
-  }, [skaterRoster, rangeDays, schedule, rosterSlots]);
+  }, [skaterRoster, rangeDays, schedule, rosterSlots, byName]);
 
   const gamesOptions = useMemo(() => {
     const counts = new Set<number>();
