@@ -197,7 +197,12 @@ export function SkaterRankingsTable({
   initialSortKey,
 }: TableProps) {
   const extraWidth = extraColumn?.widthPercent ?? 0;
-  const playerWidth = 100 - FIXED_COLUMNS_PERCENT - extraWidth;
+  // Floored so a page that also has an extra column (e.g. Drop & Replace's
+  // Roster Fit dots) never squeezes Player down to where the name itself
+  // gets clipped - percentages here are relative proportions, not a strict
+  // sum-to-100 requirement, so exceeding 100 when the floor kicks in just
+  // scales every column down slightly rather than overflowing the table.
+  const playerWidth = Math.max(100 - FIXED_COLUMNS_PERCENT - extraWidth, 14);
 
   const [sortKey, setSortKey] = useState<SortKey | null>(initialSortKey ?? null);
   const [sortDir, setSortDir] = useState<SortDir>(initialSortKey ? defaultDirFor(initialSortKey) : "asc");
