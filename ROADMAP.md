@@ -10,7 +10,10 @@ Streamer Suggestions was merged into the Player Evaluator page (now just
 "Players" at `/players`) on Sept 18 2026 - they were doing largely the same
 job (rank skaters by C-Score) through two separate pages and two separate
 backend services. Now one page: Rankings (with an All Players/Unowned
-toggle) + Compare + a Drop & Replace flow.
+toggle) + Compare + a Drop & Replace flow. Renamed to "Skaters" at
+`/skaters` on 2026-09-30 - it's skater-only (Goalies has its own page/nav
+item), and "Players" read as if it covered both. `/players` and the old
+`/streamers` both still redirect there.
 
 - [x] Yahoo Fantasy Sports API access is LIVE as of 2026-09-27. Confirmed
       via a real data call (`/fantasy/v2/users;use_login=1/games`)
@@ -29,7 +32,7 @@ toggle) + Compare + a Drop & Replace flow.
       `src/lib/yahoo-fantasy-client.ts` (all parsing shapes verified
       live, not guessed - Yahoo's JSON is oddly irregular), the
       `/api/yahoo/leagues|roster|free-agents` routes, and the League
-      Switcher in `yahoo-connect-status.tsx` (shown on `/players`,
+      Switcher in `yahoo-connect-status.tsx` (shown on `/skaters`,
       auto-picks when there's only one league). `activeLeagueKey` lives on
       `yahooConnections` in the DB, pushed to dev. Caught and fixed a real
       bug during verification: Yahoo shortens 4 team codes (LA/TB/SJ/NJ)
@@ -137,7 +140,7 @@ Players' tab bar.
 ## New tools
 
 - [x] **Player evaluator + streamer suggester**, merged - live at
-      `/players`. Full skater pool ranked by C-Score over Last 5 Games /
+      `/skaters`. Full skater pool ranked by C-Score over Last 5 Games /
       Last 10 Games / Season, a built-in player comparison tool, and a
       Drop & Replace flow (pick who to drop, see ranked free-agent
       replacements with games-in-range) - currently using a sample roster

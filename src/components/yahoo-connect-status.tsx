@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { useActiveYahooLeague } from "@/lib/yahoo-league-context";
 
 // Lives in the site header (see layout.tsx) so it's visible - and usable -
-// from any page, not just Players. Reads the shared YahooLeagueProvider
+// from any page, not just Skaters. Reads the shared YahooLeagueProvider
 // context rather than fetching on its own, so switching leagues here is
 // instantly reflected wherever else reads the active league (Drop &
 // Replace, eventually Goalies).

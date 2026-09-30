@@ -12,7 +12,7 @@ type Group = "F" | "D";
 
 /** A small live teaser for the homepage - top 5 skaters by C-Score (last 5
  *  games), not filtered to "available" players since we have no league
- *  connected here (that's what the Unowned toggle on the Players page is
+ *  connected here (that's what the Unowned toggle on the Skaters page is
  *  for). */
 export function HomepageLeaderboard() {
   const [group, setGroup] = useState<Group>("F");
@@ -67,7 +67,7 @@ export function HomepageLeaderboard() {
 
       <div className="border-t border-stripe px-4 py-2 text-[11px] text-ink-faint">
         {loading ? "Loading..." : usingSampleData ? "Sample data" : "Live"} &middot; ranked by C-Score &middot;{" "}
-        <Link href="/players" className="text-rink-blue hover:underline">
+        <Link href="/skaters" className="text-rink-blue hover:underline">
           See full rankings &rarr;
         </Link>
       </div>

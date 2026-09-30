@@ -9,8 +9,8 @@ const LIVE_TOOLS = [
       "Upload your rankings and get a live cheat sheet, draft board, pick suggestions, and schedule-fit analysis while you're on the clock.",
   },
   {
-    href: "/players",
-    name: "Players",
+    href: "/skaters",
+    name: "Skaters",
     description:
       "Rank the full skater pool by C-Score over Last 5, Last 10, or the Season, compare players side by side, and run a Drop & Replace to find your best waiver-wire add.",
   },

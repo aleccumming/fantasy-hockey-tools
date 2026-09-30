@@ -28,7 +28,7 @@ export async function GET(request: Request) {
   cookieStore.delete(STATE_COOKIE);
 
   if (oauthError || !code || !state || state !== expectedState) {
-    return NextResponse.redirect(new URL("/players?yahoo=error", baseUrl));
+    return NextResponse.redirect(new URL("/skaters?yahoo=error", baseUrl));
   }
 
   try {
@@ -53,9 +53,9 @@ export async function GET(request: Request) {
         },
       });
 
-    return NextResponse.redirect(new URL("/players?yahoo=connected", baseUrl));
+    return NextResponse.redirect(new URL("/skaters?yahoo=connected", baseUrl));
   } catch (err) {
     console.error("Yahoo token exchange failed:", err);
-    return NextResponse.redirect(new URL("/players?yahoo=error", baseUrl));
+    return NextResponse.redirect(new URL("/skaters?yahoo=error", baseUrl));
   }
 }

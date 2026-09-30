@@ -45,8 +45,8 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
                 <Link href="/draft" className="hover:text-rink-blue">
                   Draft Assistant
                 </Link>
-                <Link href="/players" className="hover:text-rink-blue">
-                  Players
+                <Link href="/skaters" className="hover:text-rink-blue">
+                  Skaters
                 </Link>
                 <Link href="/goalies" className="hover:text-rink-blue">
                   Goalies

@@ -350,7 +350,7 @@ export function PlayerEvaluatorBoard({ activeLeagueKey }: { activeLeagueKey: str
                     : "border border-line bg-surface text-ink-dim hover:border-rink-blue hover:text-rink-blue"
                 }`}
               >
-                All Players
+                All Skaters
               </button>
               <button
                 onClick={() => setOwnershipFilter("unowned")}
