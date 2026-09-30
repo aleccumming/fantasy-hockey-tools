@@ -159,7 +159,17 @@ export async function getGameDayGoalieStarts(date: string, forceRefresh = false)
   }
 
   const res = await fetch(`${BASE_URL}?date=${date}`, {
-    headers: { "User-Agent": "Mozilla/5.0 (compatible; FantasyHockeyToolsBot/1.0)" },
+    headers: {
+      // A self-identifying bot UA got blocked with a 403 from Vercel's
+      // serverless IPs (the site's behind Cloudflare) even though the
+      // exact same request succeeds from a residential IP - a full
+      // browser-like header set is the one thing worth trying before
+      // concluding it's an IP/ASN-level block with no header-only fix.
+      "User-Agent":
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36",
+      Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+      "Accept-Language": "en-US,en;q=0.9",
+    },
     next: { revalidate: 30 * 60 },
   });
   if (!res.ok) throw new Error(`GameDayGoalies request failed: ${res.status}`);
