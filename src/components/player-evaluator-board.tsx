@@ -47,8 +47,9 @@ const WINDOW_TABS: { key: EvaluatorWindow; label: string; windowLabel: string }[
   { key: "last5", label: "Last 5 Games", windowLabel: "last 5 games" },
   { key: "last10", label: "Last 10 Games", windowLabel: "last 10 games" },
   { key: "season", label: "Season", windowLabel: "this season" },
+  { key: "lastSeason", label: "Last Season", windowLabel: "last season" },
 ];
-const ALL_WINDOWS: EvaluatorWindow[] = ["last5", "last10", "season"];
+const ALL_WINDOWS: EvaluatorWindow[] = ["last5", "last10", "season", "lastSeason"];
 const SORTED_TEAMS = [...NHL_TEAMS].sort((a, b) => a.localeCompare(b));
 const MIN_TOI_OPTIONS = [
   { value: 0, label: "Any" },
@@ -56,9 +57,11 @@ const MIN_TOI_OPTIONS = [
   { value: 12, label: "12+ min/game" },
   { value: 15, label: "15+ min/game" },
 ];
-// Only meaningful for the Season window - Last 5/Last 10 already cap a
-// player's possible GP at the window size, so a GP floor there would just
-// duplicate "played every game" rather than filter out early-season noise.
+// Only meaningful for Season/Last Season - both are "full" season windows
+// where a GP floor filters out real injury-shortened/limited-role players.
+// Last 5/Last 10 already cap a player's possible GP at the window size, so
+// a GP floor there would just duplicate "played every game" rather than
+// filter out early-season noise.
 const MIN_GP_OPTIONS = [
   { value: 0, label: "Any" },
   { value: 5, label: "5+ GP" },
@@ -85,6 +88,10 @@ export function PlayerEvaluatorBoard({ activeLeagueKey }: { activeLeagueKey: str
   const { byName: yahooEligibilityByName } = useYahooPlayerEligibility();
   const { windows: liveWindows, computedAt, error: statsError, loading: statsLoading } = usePlayerEvaluatorStats();
   const usingSampleData = !liveWindows;
+  // Season and Last Season are both "full" season windows (as opposed to
+  // Last 5/Last 10, which cap GP at the window size by definition) - see
+  // MIN_GP_OPTIONS comment.
+  const isFullSeasonWindow = windowKey === "season" || windowKey === "lastSeason";
 
   // Rankings tab: ranked by whichever window is currently selected there.
   const statSource = liveWindows ? liveWindows[windowKey] : SAMPLE_SKATER_STATS;
@@ -106,8 +113,7 @@ export function PlayerEvaluatorBoard({ activeLeagueKey }: { activeLeagueKey: str
       }
       if (teamFilters.size > 0 && !teamFilters.has(p.team)) return false;
       if (p.toiPerGame < minToi) return false;
-      // Min GP only applies to the Season window - see MIN_GP_OPTIONS comment.
-      if (windowKey === "season" && p.gamesPlayed < minGp) return false;
+      if (isFullSeasonWindow && p.gamesPlayed < minGp) return false;
       if (query && !p.name.toLowerCase().includes(query)) return false;
       if (ownershipFilter === "unowned") {
         const key = normalizeName(p.name);
@@ -122,16 +128,17 @@ export function PlayerEvaluatorBoard({ activeLeagueKey }: { activeLeagueKey: str
     teamFilters,
     minToi,
     minGp,
-    windowKey,
+    isFullSeasonWindow,
     nameQuery,
     ownershipFilter,
     roster,
     yahooFreeAgents,
   ]);
 
-  // Compare tab: independent of Rankings' filters/window - ranks all three
+  // Compare tab: independent of Rankings' filters/window - ranks all four
   // windows up front so a player picked here shows Last 5 / Last 10 /
-  // Season side by side, regardless of what Rankings currently has active.
+  // Season / Last Season side by side, regardless of what Rankings
+  // currently has active.
   const rankingsByWindow = useMemo(() => {
     const result = {} as Record<EvaluatorWindow, { forwards: RankedSkaterStats[]; defense: RankedSkaterStats[] }>;
     for (const w of ALL_WINDOWS) {
@@ -419,7 +426,7 @@ export function PlayerEvaluatorBoard({ activeLeagueKey }: { activeLeagueKey: str
                 ))}
               </select>
             </label>
-            {windowKey === "season" && (
+            {isFullSeasonWindow && (
               <label className="flex items-center gap-1.5 text-xs font-medium text-ink-dim">
                 Min GP
                 <select

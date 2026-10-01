@@ -112,6 +112,26 @@ export async function currentNstSeason(referenceDate?: Date): Promise<string> {
   }
 }
 
+/** Subtracts one season from a season code, e.g. "20262027" -> "20252026" -
+ *  used for the "Last Season" window (the season before whatever
+ *  currentNstSeason() says is current). */
+export function previousNstSeason(seasonCode: string): string {
+  const startYear = Number(seasonCode.slice(0, 4)) - 1;
+  return `${startYear}${startYear + 1}`;
+}
+
+/** The pure arithmetic behind a 3-season baseline range (2 prior seasons +
+ *  the given one), split out from baselineSeasonRange so a caller that
+ *  already has a specific season code - not "right now" - can build the
+ *  same kind of baseline without a live lookup. Used for the "Last Season"
+ *  window's own baseline, which needs to end at the season BEFORE last
+ *  season (not last season itself) so it isn't compared against itself. */
+export function seasonRangeSpanning(thruSeason: string): { fromSeason: string; thruSeason: string } {
+  const thruStartYear = Number(thruSeason.slice(0, 4));
+  const fromStartYear = thruStartYear - 2;
+  return { fromSeason: `${fromStartYear}${fromStartYear + 1}`, thruSeason };
+}
+
 /** A multi-season window ending at the current season, used as a "career"
  *  baseline for the luck/regression columns - not a true full-career figure,
  *  but rookies and short-tenured players still get a meaningful baseline
@@ -121,9 +141,7 @@ export async function baselineSeasonRange(referenceDate?: Date): Promise<{
   thruSeason: string;
 }> {
   const thruSeason = await currentNstSeason(referenceDate);
-  const thruStartYear = Number(thruSeason.slice(0, 4));
-  const fromStartYear = thruStartYear - 2;
-  return { fromSeason: `${fromStartYear}${fromStartYear + 1}`, thruSeason };
+  return seasonRangeSpanning(thruSeason);
 }
 
 function buildUrl(stdoi: "std" | "oi", opts: NstQueryOptions): string {

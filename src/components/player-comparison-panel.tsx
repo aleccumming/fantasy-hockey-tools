@@ -10,6 +10,7 @@ const WINDOW_COLUMNS: { key: EvaluatorWindow; label: string }[] = [
   { key: "last5", label: "L5" },
   { key: "last10", label: "L10" },
   { key: "season", label: "Season" },
+  { key: "lastSeason", label: "Last Yr" },
 ];
 
 export interface ComparePlayerData {
@@ -109,11 +110,11 @@ export function PlayerComparisonPanel({
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-stripe bg-surface text-center text-[10px] font-semibold uppercase tracking-wide text-ink-faint">
-              <th colSpan={3} className="px-2 py-1">
+              <th colSpan={WINDOW_COLUMNS.length} className="px-2 py-1">
                 {left.name}
               </th>
               <th className="border-x border-stripe px-2 py-1">Stat</th>
-              <th colSpan={3} className="px-2 py-1">
+              <th colSpan={WINDOW_COLUMNS.length} className="px-2 py-1">
                 {right.name}
               </th>
             </tr>

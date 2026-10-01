@@ -1,19 +1,23 @@
-// Server-only. Builds real SkaterRateStats for the Player Evaluator's three
-// windows - last 5 games, last 10 games, and the season to date - each
-// ranked independently, plus a shared multi-season baseline for the
-// luck/regression columns (used in all three windows, so a stat is never
-// compared against itself even when viewing the Season window).
+// Server-only. Builds real SkaterRateStats for the Player Evaluator's four
+// windows - last 5 games, last 10 games, the season to date, and last
+// season - each ranked independently, plus a per-window multi-season
+// baseline for the luck/regression columns, so a stat is never compared
+// against itself even when viewing the Season or Last Season window (see
+// seasonRangeSpanning's use below for how Last Season gets its own
+// baseline ending one season further back, instead of reusing the
+// current-season baseline, which would otherwise overlap it heavily).
 import type { SkaterRateStats } from "./streamer-stats";
-import { currentNstSeason, baselineSeasonRange } from "./nst-client";
+import { currentNstSeason, baselineSeasonRange, previousNstSeason, seasonRangeSpanning } from "./nst-client";
 import { fetchSkaterWindow, toSkaterRateStats, type SkaterWindowRow } from "./skater-window";
 import { normalizeName } from "./name-matching";
 
-export type EvaluatorWindow = "last5" | "last10" | "season";
+export type EvaluatorWindow = "last5" | "last10" | "season" | "lastSeason";
 
 export interface PlayerEvaluatorStats {
   last5: SkaterRateStats[];
   last10: SkaterRateStats[];
   season: SkaterRateStats[];
+  lastSeason: SkaterRateStats[];
 }
 
 // Below this much total ice time over a window, per-60 rates are too noisy
@@ -25,10 +29,14 @@ export interface PlayerEvaluatorStats {
 // per-game bar is still trustworthy), 250 for the season (~3 min/game
 // over a full 84-game season - low and inclusive, meant only to exclude
 // one-shift emergency call-ups, not real roster players).
-const WINDOW_MIN_TOI_AT_FULL: Record<"last5" | "last10" | "season", { fullGames: number; fullMinToi: number }> = {
+const WINDOW_MIN_TOI_AT_FULL: Record<EvaluatorWindow, { fullGames: number; fullMinToi: number }> = {
   last5: { fullGames: 5, fullMinToi: 20 },
   last10: { fullGames: 10, fullMinToi: 20 },
   season: { fullGames: 84, fullMinToi: 250 },
+  // Last Season is always a complete season by definition, so this just
+  // settles at the full 250-minute bar in practice (same config as
+  // Season - the scaling only matters while a window is still filling up).
+  lastSeason: { fullGames: 84, fullMinToi: 250 },
 };
 
 /** A flat minutes floor works once a window is actually full, but early in
@@ -76,33 +84,47 @@ export async function getPlayerEvaluatorStats(forceRefresh = false): Promise<Pla
   }
 
   const [season, baselineRange] = await Promise.all([currentNstSeason(), baselineSeasonRange()]);
+  const lastSeason = previousNstSeason(season);
+  // Ends one season further back than lastSeason itself, so Last Season's
+  // own luck/regression columns aren't compared against a baseline that's
+  // mostly made of the exact same season being displayed.
+  const lastSeasonBaselineRange = seasonRangeSpanning(previousNstSeason(lastSeason));
 
-  const [last5Rows, last10Rows, seasonRows, baselineRows] = await Promise.all([
-    fetchSkaterWindow({
-      fromSeason: season,
-      thruSeason: season,
-      gameRange: { type: "teamGames", games: 5 },
-      situation: "all",
-    }),
-    fetchSkaterWindow({
-      fromSeason: season,
-      thruSeason: season,
-      gameRange: { type: "teamGames", games: 10 },
-      situation: "all",
-    }),
-    fetchSkaterWindow({
-      fromSeason: season,
-      thruSeason: season,
-      gameRange: { type: "none" },
-      situation: "all",
-    }),
-    fetchSkaterWindow({ ...baselineRange, gameRange: { type: "none" }, situation: "all" }),
-  ]);
+  const [last5Rows, last10Rows, seasonRows, baselineRows, lastSeasonRows, lastSeasonBaselineRows] =
+    await Promise.all([
+      fetchSkaterWindow({
+        fromSeason: season,
+        thruSeason: season,
+        gameRange: { type: "teamGames", games: 5 },
+        situation: "all",
+      }),
+      fetchSkaterWindow({
+        fromSeason: season,
+        thruSeason: season,
+        gameRange: { type: "teamGames", games: 10 },
+        situation: "all",
+      }),
+      fetchSkaterWindow({
+        fromSeason: season,
+        thruSeason: season,
+        gameRange: { type: "none" },
+        situation: "all",
+      }),
+      fetchSkaterWindow({ ...baselineRange, gameRange: { type: "none" }, situation: "all" }),
+      fetchSkaterWindow({
+        fromSeason: lastSeason,
+        thruSeason: lastSeason,
+        gameRange: { type: "none" },
+        situation: "all",
+      }),
+      fetchSkaterWindow({ ...lastSeasonBaselineRange, gameRange: { type: "none" }, situation: "all" }),
+    ]);
 
   const data: PlayerEvaluatorStats = {
     last5: buildStats(last5Rows, baselineRows, scaledMinToi(last5Rows, "last5")),
     last10: buildStats(last10Rows, baselineRows, scaledMinToi(last10Rows, "last10")),
     season: buildStats(seasonRows, baselineRows, scaledMinToi(seasonRows, "season")),
+    lastSeason: buildStats(lastSeasonRows, lastSeasonBaselineRows, scaledMinToi(lastSeasonRows, "lastSeason")),
   };
 
   cache = { data, expiresAt: Date.now() + CACHE_TTL_MS };

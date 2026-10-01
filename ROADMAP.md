@@ -73,13 +73,19 @@ item), and "Players" read as if it covered both. `/players` and the old
       correct as long as at least one person somewhere has ever connected
       Yahoo. Falls back to NST's single position only if the cache has
       literally never been seeded.
-- [ ] Add a "Last Season" window option alongside Last 5 / Last 10 / Season.
-      Today the Season window only shows last year's data as an automatic
-      fallback (`currentNstSeason()` in `nst-client.ts`) before the new
-      season has real games - there's no way to see last season on purpose
-      once the new season is underway and its own small early sample
-      overwrites the view. Straightforward: mostly a matter of fetching an
-      explicit prior-season NST window and adding a fourth tab.
+- [x] Added a "Last Season" window alongside Last 5 / Last 10 / Season
+      (2026-09-30) - a real, complete prior-season sample to fall back on
+      by choice while the new season is still this thin, rather than a
+      fallback you only see by accident. `previousNstSeason()` in
+      `nst-client.ts` derives the prior season code from whatever
+      `currentNstSeason()` says is current (so it stays correct year to
+      year, same self-correcting approach as the season-detection fix
+      above). Gets its own baseline for the Luck/Regression columns too
+      (`seasonRangeSpanning`, ending one season further back) rather than
+      reusing the current-season baseline, which would otherwise overlap
+      the displayed window heavily. Min GP filter now applies to both
+      Season and Last Season (both are "full" windows where a GP floor
+      filters out real injury-shortened players, not early-season noise).
 - [ ] Consider a "Preseason" window too - lower priority/more work. Both
       `schedule.ts` (`gameType === 2` filter) and `nst-client.ts`
       (`stype: "2"`) currently exclude preseason games entirely, so this
