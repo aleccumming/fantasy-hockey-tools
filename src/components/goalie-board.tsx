@@ -3,9 +3,7 @@
 import { useMemo, useState } from "react";
 import { useGoalieSpotStarts } from "@/lib/use-goalie-spot-starts";
 import { useGoalieTracking } from "@/lib/use-goalie-tracking";
-import { useGameDayGoalieStarts } from "@/lib/use-gameday-goalie-starts";
 import type { GoalieStartTracking } from "@/lib/goalie-tracking-service";
-import type { GameDayGoalieEntry } from "@/lib/gameday-goalie-starts";
 import { useHeadshots } from "@/lib/use-headshots";
 import { PlayerHeadshot } from "@/components/player-headshot";
 import { currentWeekRange } from "@/lib/schedule";
@@ -34,49 +32,6 @@ function addDaysISO(dateStr: string, days: number): string {
 }
 
 const DEFAULT_RANGE = currentWeekRange();
-
-/** Renders the gamedaytweets.com signal for one team on one day - a
- *  confirmed tweet (shown as a raw quote, deliberately not parsed into a
- *  name - see gameday-goalie-starts.ts), the site's own structured
- *  "guess" (a real name, shown directly), or a plain dash when nothing's
- *  posted yet for that team/day. */
-function ConfirmedStartCell({ entry }: { entry: GameDayGoalieEntry | undefined }) {
-  if (!entry || entry.source === "none") {
-    return <span className="text-ink-faint">&mdash;</span>;
-  }
-  if (entry.source === "tweet") {
-    return (
-      <div className="max-w-[220px]">
-        <span className="rounded bg-rink-green-light px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-rink-green">
-          Confirmed
-        </span>
-        <p className="mt-1 text-xs italic text-ink-dim" title={entry.tweetText}>
-          &quot;{entry.tweetText}&quot;
-        </p>
-        <p className="mt-0.5 text-[10px] text-ink-faint">
-          {entry.tweetHandle}
-          {entry.tweetUrl && (
-            <>
-              {" "}
-              &middot;{" "}
-              <a href={entry.tweetUrl} target="_blank" rel="noopener noreferrer" className="hover:underline">
-                view tweet
-              </a>
-            </>
-          )}
-        </p>
-      </div>
-    );
-  }
-  // source === "guess"
-  return (
-    <div className="max-w-[180px] text-xs text-ink-dim">
-      <span className="font-semibold text-ink">{entry.guessName}</span>
-      {entry.guessNote && <span className="text-ink-faint"> {entry.guessNote}</span>}
-      <p className="text-[10px] text-ink-faint">GameDayGoalies&apos; guess</p>
-    </div>
-  );
-}
 
 function SpotStartsTable() {
   const headshots = useHeadshots();
@@ -109,13 +64,6 @@ function SpotStartsTable() {
   );
   const effectiveDate = selectedDate ?? availableDates[0] ?? null;
   const ranked = (spotStarts ?? []).filter((r) => r.date === effectiveDate);
-
-  // Real goalie-starter info from gamedaytweets.com for whichever single
-  // day is showing - only meaningfully populated for the next day or two
-  // out (confirmations trickle in through game day itself), so most
-  // further-out rows will just show "—" until closer to game time.
-  const { entries: gdtEntries } = useGameDayGoalieStarts(effectiveDate ?? undefined);
-  const gdtByTeam = useMemo(() => new Map((gdtEntries ?? []).map((e) => [e.team, e])), [gdtEntries]);
 
   return (
     <div>
@@ -188,12 +136,6 @@ function SpotStartsTable() {
             <th className="px-3 py-2">#</th>
             <th className="px-3 py-2">Goalie</th>
             <th className="px-3 py-2">Matchup</th>
-            <th
-              className="px-3 py-2"
-              title="Real goalie-starter info from gamedaytweets.com - a confirmed beat-writer tweet when one exists, or their own projected guess when it doesn't. Only reliably populated within a day or so of the game - independent of this app's own presumed-starter projection below, so it's worth checking when the two disagree."
-            >
-              Confirmed Start
-            </th>
             <th className="px-3 py-2" title="Estimated probability this goalie's team wins - built from real season/home-road/last-10 win records via the log5 method, plus a small nudge for the goalie's own current form">
               Win Prob.
             </th>
@@ -220,9 +162,6 @@ function SpotStartsTable() {
               <td className="px-3 py-2 text-ink-dim">
                 <div>{r.isHome ? "vs" : "@"} {r.opponent}</div>
                 <div className="text-xs text-ink-faint">{formatDayLabel(r.date)}</div>
-              </td>
-              <td className="px-3 py-2">
-                <ConfirmedStartCell entry={gdtByTeam.get(r.team)} />
               </td>
               <td className={`px-3 py-2 tabular-nums text-base font-bold ${winProbabilityColor(r.winProbability)}`}>
                 {(r.winProbability * 100).toFixed(0)}%
@@ -339,9 +278,7 @@ export function GoalieBoard() {
           (Start Tracker&apos;s current-share leader) feed a genuine win-probability estimate via the
           log5 method - not a goal-differential proxy. &quot;Presumed starter&quot; isn&apos;t a
           confirmed lineup though - nobody publishes that for free, so a back-to-back or surprise
-          rest day can differ from the projection. The Confirmed Start column cross-checks against
-          real beat-writer reports (via gamedaytweets.com) when one&apos;s been posted - usually only
-          available within a day or so of the game.
+          rest day can differ from the projection.
         </div>
       ) : (
         <div className="rounded-md border-l-4 border-rink-blue bg-rink-blue-light px-4 py-2.5 text-sm text-ink">
