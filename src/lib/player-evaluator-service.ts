@@ -16,33 +16,42 @@ export interface PlayerEvaluatorStats {
   season: SkaterRateStats[];
 }
 
-// Same small-sample guard as Streamer Suggestions - below this much total
-// ice time over a window, per-60 rates are too noisy to trust. Fixed at 20
-// minutes for the two short windows, since they're always the same size
-// (5 or 10 games) regardless of when in the season it is.
-const MIN_WINDOW_TOI_MINUTES = 20;
+// Below this much total ice time over a window, per-60 rates are too noisy
+// to trust - the target bar once a window is actually "full" (a team's
+// really played this many games). 20 minutes for the two short windows
+// (same flat total for both, so the 10-game window ends up with a more
+// lenient per-game average than the 5-game one - intentional: more games
+// means more chances for noise to average out, so a slightly lower
+// per-game bar is still trustworthy), 250 for the season (~3 min/game
+// over a full 84-game season - low and inclusive, meant only to exclude
+// one-shift emergency call-ups, not real roster players).
+const WINDOW_MIN_TOI_AT_FULL: Record<"last5" | "last10" | "season", { fullGames: number; fullMinToi: number }> = {
+  last5: { fullGames: 5, fullMinToi: 20 },
+  last10: { fullGames: 10, fullMinToi: 20 },
+  season: { fullGames: 84, fullMinToi: 250 },
+};
 
-// The Season window can't use a fixed total-minutes bar the same way - a
-// flat "250 minutes" would show almost nobody for the first couple of
-// weeks of a new season, since nobody's played enough games yet to reach
-// it. 250 minutes over a full 84-game season averages out to about 3
-// min/game - an intentionally low, inclusive bar meant only to exclude
-// one-shift emergency call-ups, not real roster players. Scaling that same
-// per-game standard by how far the season has actually progressed (using
-// the highest single-player GP seen in the data as a proxy for that,
-// rather than a separate schedule lookup) keeps the bar proportionally
-// tiny on opening night and lets it grow into the full 250 as the season
-// goes on, so real players never disappear from the list early on.
-const SEASON_FULL_GAMES = 84;
-const SEASON_MIN_TOI_AT_FULL_SEASON = 250;
-
-function seasonMinToi(seasonRows: Map<string, SkaterWindowRow>): number {
+/** A flat minutes floor works once a window is actually full, but early in
+ *  a window - especially early in a new season, when even "last 5 games"
+ *  can't yet contain 5 real games - the same flat bar becomes a much
+ *  stricter PER-GAME requirement than intended (20 minutes total across 1
+ *  game is a real ask even a true top-line player can miss on an off
+ *  night; confirmed live on opening week: Crosby/Malkin/Karlsson all
+ *  excluded from Last 5 by this exact flat bar while clearing Season's
+ *  already-scaled one). So every window scales its bar the same way,
+ *  proportional to how many games have actually been played so far within
+ *  it (using the highest single-player GP seen in that window's own data
+ *  as a proxy, rather than a separate schedule lookup) - tiny on opening
+ *  night, growing to the full target as that window's games actually
+ *  accumulate, so real players never disappear from ANY window early on. */
+function scaledMinToi(rows: Map<string, SkaterWindowRow>, window: EvaluatorWindow): number {
+  const { fullGames, fullMinToi } = WINDOW_MIN_TOI_AT_FULL[window];
   let maxGp = 0;
-  for (const row of seasonRows.values()) {
+  for (const row of rows.values()) {
     if (row.gp > maxGp) maxGp = row.gp;
   }
   if (maxGp <= 0) return 0;
-  return (SEASON_MIN_TOI_AT_FULL_SEASON * Math.min(maxGp, SEASON_FULL_GAMES)) / SEASON_FULL_GAMES;
+  return (fullMinToi * Math.min(maxGp, fullGames)) / fullGames;
 }
 
 let cache: { data: PlayerEvaluatorStats; expiresAt: number } | null = null;
@@ -91,9 +100,9 @@ export async function getPlayerEvaluatorStats(forceRefresh = false): Promise<Pla
   ]);
 
   const data: PlayerEvaluatorStats = {
-    last5: buildStats(last5Rows, baselineRows, MIN_WINDOW_TOI_MINUTES),
-    last10: buildStats(last10Rows, baselineRows, MIN_WINDOW_TOI_MINUTES),
-    season: buildStats(seasonRows, baselineRows, seasonMinToi(seasonRows)),
+    last5: buildStats(last5Rows, baselineRows, scaledMinToi(last5Rows, "last5")),
+    last10: buildStats(last10Rows, baselineRows, scaledMinToi(last10Rows, "last10")),
+    season: buildStats(seasonRows, baselineRows, scaledMinToi(seasonRows, "season")),
   };
 
   cache = { data, expiresAt: Date.now() + CACHE_TTL_MS };
