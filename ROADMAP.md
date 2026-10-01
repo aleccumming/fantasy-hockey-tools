@@ -114,6 +114,19 @@ Players' tab bar.
       Caveat: "presumed starter" is a projection (Start Tracker's current-
       share leader), not a confirmed daily lineup - no free source publishes
       that.
+- Tried (2026-09-30) and reverted same day: a real confirmed-starter signal
+      from gamedaytweets.com (run by the same people as the @GameDayGoalies
+      Twitter/X account - confirmed via its bio, not a random scrape).
+      Parser worked correctly end-to-end locally. Dead end in production:
+      the site's behind Cloudflare, which blocks Vercel's serverless IP
+      range outright (confirmed - better browser-like headers made no
+      difference, so it's IP/ASN-level, not a fingerprinting issue). A
+      client-side fetch from the visitor's own browser isn't viable either
+      - the site sends no `Access-Control-Allow-Origin` header, so CORS
+      blocks that path too. Real fix would mean paying for a residential-IP
+      scraping-proxy service (ScraperAPI/ScrapingBee/etc.) - not worth it
+      for a secondary signal unless that changes. Don't re-attempt a plain
+      server-side `fetch()` against this site without a proxy in place.
 
 ## Scoring formats
 
