@@ -40,12 +40,19 @@ export interface RankedDeploymentPlayer extends DeploymentPlayer {
   deploymentScore: number;
 }
 
-// Below this many games in the recent window, a single emergency call-up
-// or a couple of late-season appearances isn't a real deployment signal -
-// just noise. Below this many games LAST season, the baseline itself is
-// too thin to trust (also naturally excludes true rookies with no real
-// prior-season track record, who have nothing to compare against yet).
-const MIN_RECENT_GP = 3;
+// Deliberately just 1 - this tool's whole point is catching a real role
+// change as early as possible, and "Last 10 Games" can't contain more than
+// a couple of real games in the season's first week or two anyway (caught
+// live: a flat MIN_RECENT_GP of 3 excluded literally every player on
+// opening week, including McDavid at 2 GP - the same class of early-season
+// sample-size bug already hit twice elsewhere this session). A single
+// game's TOI is noisier than an average over several, but the baseline
+// comparison is what actually filters out noise here, not this floor.
+// Below this many games LAST season, the baseline itself is too thin to
+// trust (also naturally excludes true rookies with no real prior-season
+// track record, who have nothing to compare against yet) - this one isn't
+// subject to the early-season problem since last season is already over.
+const MIN_RECENT_GP = 1;
 const MIN_BASELINE_GP = 10;
 
 function toiPerGame(row: NstIndividualRow | undefined): number {
