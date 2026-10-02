@@ -113,8 +113,15 @@ export function DropReplaceFlow({
   const rosterLoading = usingYahoo && yahooRosterLoading;
   // Goalies are selectable as a drop (freeing roster space) but never part
   // of the skater roster-fit slot matching - an empty positions array would
-  // otherwise look "eligible" for the universal UTIL slot.
-  const skaterRoster = useMemo(() => roster.filter((p) => !p.isGoalie), [roster]);
+  // otherwise look "eligible" for the universal UTIL slot. IR/IR+ players
+  // are excluded too - they can never actually be placed in an active
+  // lineup slot, so counting them as "competition" for a slot on days they
+  // play was phantom competition that made the roster look fuller than it
+  // really is (confirmed live: a player parked on IR who also plays on a
+  // given day was blocking that day's slot in the fit-days matching below,
+  // understating both candidates' "Fits" and a drop candidate's "games
+  // you'd lose" - a real IR+ player never occupies that slot at all).
+  const skaterRoster = useMemo(() => roster.filter((p) => !p.isGoalie && !p.isOnIR), [roster]);
 
   // A player parked on IR/IR+ doesn't count against the league's roster cap
   // - that's the whole point of the slot, and it's how a real Yahoo manager
