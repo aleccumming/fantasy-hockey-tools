@@ -161,20 +161,34 @@ Players' tab bar.
 - [x] **Deployment** (2026-10-02) - live at `/deployment`. Surfaces real
       ice-time role changes (recent trusted minutes, power-play time
       especially) before the points catch up to them - production mostly
-      follows opportunity, not the other way around. Compares Last 10
-      Games against last season as the baseline (not "earlier this
-      season" - too young to mean anything in the first weeks, which is
-      exactly when a new-season role change is most worth catching
-      early). PP TOI required a new NST situation query (`sit: "pp"`,
-      verified live against real PP1 numbers - e.g. Kucherov ~4.3
-      min/gm - same column layout as the existing 5v5/all reports, so
-      no new parsing logic needed). Deliberately scoped to ice time only,
-      not linemate identity - NST's public bot API doesn't expose line
-      combinations, only aggregate ice time per situation; a real role
-      change is a strong proxy for better linemates even without naming
-      them. See `deployment-service.ts` for the composite "Deployment
-      Score" (same rank-averaging approach as C-Score). Extracted the
-      Yahoo multi-position override (previously local to
+      follows opportunity, not the other way around. Compares a short
+      recent window (`RECENT_GAMES` in `deployment-service.ts` - started
+      at Last 10 Games, shrunk to Last 3 same-day per feedback: a real
+      deployment change is obvious to an attentive fan within a game or
+      two, so 10 games was reacting slower than a human would) against
+      last season as the baseline (not "earlier this season" - too young
+      to mean anything in the first weeks, which is exactly when a new-
+      season role change is most worth catching early). PP TOI required a
+      new NST situation query (`sit: "pp"`, verified live against real
+      PP1 numbers - e.g. Kucherov ~4.3 min/gm - same column layout as the
+      existing 5v5/all reports, so no new parsing logic needed).
+      Deliberately scoped to ice time only, not linemate identity - NST's
+      public bot API doesn't expose line combinations, only aggregate ice
+      time per situation; a real role change is a strong proxy for better
+      linemates even without naming them. Looked into two real confirmed-
+      line sources as a follow-up (gamedaytweets.com, already covered
+      above - blocked from Vercel's IPs; frozenpool.dobbersports.com's
+      "Last Game Lines" report, PP1/PP2 by team) - the actual line data
+      on frozenpool never appeared in a plain unauthenticated fetch (found
+      the real `#last_game_lines` DataTable's setup in the page's JS, but
+      the table itself is never server-rendered for an anonymous request),
+      which points to it being gated behind their paid "Frozen Tools"
+      subscription rather than a scrapeable public page - not pursued
+      further for that reason; don't re-attempt a plain fetch against it
+      without first confirming it's actually publicly accessible. See
+      `deployment-service.ts` for the composite "Deployment Score" (same
+      rank-averaging approach as C-Score). Extracted the Yahoo multi-
+      position override (previously local to
       `player-evaluator-board.tsx`) into a shared
       `apply-eligibility-overrides.ts` so this tool gets the same
       correct team/position handling Rankings already has.

@@ -1,18 +1,27 @@
 // Server-only. "Deployment Boost" - who's recently gotten meaningfully more
 // ice time or power-play time than their established track record, the
 // single biggest leading indicator of a fantasy breakout (production
-// mostly follows opportunity, not the other way around). Compares a
-// recent window (Last 10 Games) against last season as the baseline -
-// deliberately NOT "earlier this season," since this season is still too
-// young for that to mean anything yet, and a new-season deployment change
-// (trade, new linemates, a coaching change) is exactly the signal this is
-// built to catch early.
+// mostly follows opportunity, not the other way around). Compares a short
+// recent window against last season as the baseline - deliberately NOT
+// "earlier this season," since this season is still too young for that to
+// mean anything yet, and a new-season deployment change (trade, new
+// linemates, a coaching change) is exactly the signal this is built to
+// catch early. The recent window itself is intentionally short (see
+// RECENT_GAMES below) - a real deployment change is usually obvious to
+// anyone paying attention within a game or two, so the tool should be at
+// least that responsive, not slower.
 //
 // Scoped to ice-time signals only (5v5+PP TOI), not linemate identity -
 // NST's public bot API (the same one this app already uses everywhere
 // else) doesn't expose line-combination data, only aggregate ice time per
 // situation. A real PP-unit promotion or 5v5 role change is a strong
-// proxy for "better linemates" even without naming them.
+// proxy for "better linemates" even without naming them. (Looked into
+// gamedaytweets.com and frozenpool.dobbersports.com's "Last Game Lines"
+// report as real confirmed-line sources - gamedaytweets is blocked from
+// Vercel's IPs, see ROADMAP.md; frozenpool's actual line data never
+// appeared in a plain unauthenticated fetch, which points to it being
+// gated behind their paid "Frozen Tools" subscription rather than being
+// a scrapeable public page - not pursued further for that reason.)
 import type { Position } from "./types";
 import { fetchIndividualStats, currentNstSeason, previousNstSeason, type NstIndividualRow } from "./nst-client";
 import { normalizeName } from "./name-matching";
@@ -40,14 +49,21 @@ export interface RankedDeploymentPlayer extends DeploymentPlayer {
   deploymentScore: number;
 }
 
-// Deliberately just 1 - this tool's whole point is catching a real role
-// change as early as possible, and "Last 10 Games" can't contain more than
-// a couple of real games in the season's first week or two anyway (caught
-// live: a flat MIN_RECENT_GP of 3 excluded literally every player on
-// opening week, including McDavid at 2 GP - the same class of early-season
-// sample-size bug already hit twice elsewhere this session). A single
-// game's TOI is noisier than an average over several, but the baseline
-// comparison is what actually filters out noise here, not this floor.
+// How many of a team's most recent games count as "recent" - short on
+// purpose (shrunk from an initial 10, per explicit feedback: a real
+// deployment change is obvious to an attentive fan within a game or two,
+// so a 10-game window was reacting far slower than a human would).
+export const RECENT_GAMES = 3;
+
+// Deliberately just 1, not RECENT_GAMES itself - this tool's whole point
+// is catching a real role change as early as possible, and the window
+// can't contain more than a couple of real games in the season's first
+// week or two anyway (caught live: a flat MIN_RECENT_GP of 3 excluded
+// literally every player on opening week, including McDavid at 2 GP - the
+// same class of early-season sample-size bug already hit twice elsewhere
+// this session). A single game's TOI is noisier than an average over
+// several, but the baseline comparison is what actually filters out noise
+// here, not this floor.
 // Below this many games LAST season, the baseline itself is too thin to
 // trust (also naturally excludes true rookies with no real prior-season
 // track record, who have nothing to compare against yet) - this one isn't
@@ -79,13 +95,13 @@ export async function getDeploymentBoosts(forceRefresh = false): Promise<RankedD
     fetchIndividualStats({
       fromSeason: season,
       thruSeason: season,
-      gameRange: { type: "teamGames", games: 10 },
+      gameRange: { type: "teamGames", games: RECENT_GAMES },
       situation: "all",
     }),
     fetchIndividualStats({
       fromSeason: season,
       thruSeason: season,
-      gameRange: { type: "teamGames", games: 10 },
+      gameRange: { type: "teamGames", games: RECENT_GAMES },
       situation: "pp",
     }),
     fetchIndividualStats({ fromSeason: lastSeason, thruSeason: lastSeason, gameRange: { type: "none" }, situation: "all" }),

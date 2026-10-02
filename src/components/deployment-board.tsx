@@ -9,7 +9,7 @@ import { PlayerHeadshot } from "@/components/player-headshot";
 import { abbreviateFirstName } from "@/components/skater-rankings-table";
 import { TeamMultiSelect } from "@/components/team-multi-select";
 import { NHL_TEAMS } from "@/lib/schedule";
-import type { RankedDeploymentPlayer } from "@/lib/deployment-service";
+import { RECENT_GAMES, type RankedDeploymentPlayer } from "@/lib/deployment-service";
 
 type Direction = "boosts" | "drops";
 
@@ -70,7 +70,7 @@ export function DeploymentBoard() {
   return (
     <div>
       <div className="rounded-md border-l-4 border-rink-blue bg-rink-blue-light px-4 py-2.5 text-sm text-ink">
-        Compares each skater&apos;s Last 10 Games ice time against their last-season baseline - production mostly
+        Compares each skater&apos;s Last {RECENT_GAMES} Games ice time against their last-season baseline - production mostly
         follows opportunity, not the other way around, so a real jump in trusted minutes (especially power-play
         time) is often the earliest sign of a breakout, before the points show up. Only ice time is tracked here,
         not linemate identity specifically - no free source publishes real-time line combinations, but a genuine
@@ -128,15 +128,21 @@ export function DeploymentBoard() {
             <tr className="border-b border-line bg-surface text-left text-[11px] font-semibold uppercase tracking-wide text-ink-dim">
               <th className="px-3 py-2">#</th>
               <th className="px-3 py-2">Player</th>
-              <th className="px-2 py-2 text-center">GP (L10)</th>
-              <th className="px-2 py-2 text-center">TOI/gm (L10)</th>
+              <th className="px-2 py-2 text-center">GP (L{RECENT_GAMES})</th>
+              <th className="px-2 py-2 text-center">TOI/gm (L{RECENT_GAMES})</th>
               <th className="px-2 py-2 text-center">TOI/gm (Last Yr)</th>
-              <th className="px-2 py-2 text-center" title="Last 10 Games TOI/game minus last season's TOI/game">
+              <th
+                className="px-2 py-2 text-center"
+                title={`Last ${RECENT_GAMES} Games TOI/game minus last season's TOI/game`}
+              >
                 &Delta; TOI
               </th>
-              <th className="px-2 py-2 text-center">PP TOI/gm (L10)</th>
+              <th className="px-2 py-2 text-center">PP TOI/gm (L{RECENT_GAMES})</th>
               <th className="px-2 py-2 text-center">PP TOI/gm (Last Yr)</th>
-              <th className="px-2 py-2 text-center" title="Last 10 Games PP TOI/game minus last season's PP TOI/game">
+              <th
+                className="px-2 py-2 text-center"
+                title={`Last ${RECENT_GAMES} Games PP TOI/game minus last season's PP TOI/game`}
+              >
                 &Delta; PP TOI
               </th>
             </tr>
