@@ -102,7 +102,7 @@ export function DropReplaceFlow({
     loading: yahooRosterLoading,
   } = useYahooRoster(activeLeagueKey);
   const { freeAgents: yahooFreeAgents, loading: yahooFreeAgentsLoading } = useYahooFreeAgents(activeLeagueKey);
-  const { data: schedule } = useScheduleRange(rangeStart, rangeEnd);
+  const { data: schedule, loading: scheduleLoading, error: scheduleError } = useScheduleRange(rangeStart, rangeEnd);
 
   // A connected Yahoo league is the real roster/slots - the manual editor
   // is a fallback for when no league is connected yet, not something that
@@ -395,18 +395,27 @@ export function DropReplaceFlow({
               {dropping && (
                 <>
                   {!p.isGoalie && (
-                    <div
-                      className="mt-1.5"
-                      title={`Games this player could start from ${rangeStart} to ${rangeEnd} if you kept them - 0 means dropping them costs nothing in this range (bye week, or no room in your lineup anyway)`}
-                    >
+                    <div className="mt-1.5">
                       <span className="text-[10px] font-semibold uppercase tracking-wide text-ink-faint">
                         You lose
                       </span>
-                      <FitDayIndicator
-                        fitDates={lostGamesByName.get(p.name) ?? []}
-                        rangeDays={rangeDays}
-                        label="start"
-                      />
+                      {scheduleLoading ? (
+                        <p className="text-xs text-ink-faint">Loading schedule...</p>
+                      ) : scheduleError ? (
+                        <p className="text-xs text-rink-red" title={scheduleError}>
+                          Schedule didn&apos;t load - unknown
+                        </p>
+                      ) : (
+                        <div
+                          title={`Games this player could start from ${rangeStart} to ${rangeEnd} if you kept them - 0 means dropping them costs nothing in this range (bye week, or no room in your lineup anyway)`}
+                        >
+                          <FitDayIndicator
+                            fitDates={lostGamesByName.get(p.name) ?? []}
+                            rangeDays={rangeDays}
+                            label="start"
+                          />
+                        </div>
+                      )}
                     </div>
                   )}
                   <div className="mt-2 rounded bg-rink-red px-2 py-1 text-center text-xs font-bold text-white">
@@ -499,6 +508,13 @@ export function DropReplaceFlow({
 
           {usingYahoo && yahooFreeAgentsLoading ? (
             <p className="mt-4 text-center text-sm text-ink-dim">Loading your league&apos;s free agents...</p>
+          ) : scheduleLoading ? (
+            <p className="mt-4 text-center text-sm text-ink-dim">Loading the NHL schedule for this range...</p>
+          ) : scheduleError ? (
+            <p className="mt-4 text-center text-sm text-rink-red">
+              Couldn&apos;t load the schedule ({scheduleError}) - roster fits below aren&apos;t reliable until this
+              loads. Try a different date range or refresh.
+            </p>
           ) : (
             <>
               <SkaterRankingsTable
