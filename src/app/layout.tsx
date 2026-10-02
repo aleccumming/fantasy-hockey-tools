@@ -51,6 +51,9 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
                 <Link href="/goalies" className="hover:text-rink-blue">
                   Goalies
                 </Link>
+                <Link href="/deployment" className="hover:text-rink-blue">
+                  Deployment
+                </Link>
               </nav>
               {session?.user && <YahooConnectStatus />}
               <div className="ml-auto flex items-center gap-3 text-sm">

@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { computeCompositeRankingsByGroup, type RankedSkaterStats, type SkaterRateStats } from "@/lib/streamer-stats";
+import { computeCompositeRankingsByGroup, type RankedSkaterStats } from "@/lib/streamer-stats";
 import { SAMPLE_SKATER_STATS } from "@/lib/streamer-sample-data";
 import { useHeadshots } from "@/lib/use-headshots";
 import { usePlayerEvaluatorStats } from "@/lib/use-player-evaluator-stats";
@@ -16,28 +16,8 @@ import { useMyRoster } from "@/lib/use-my-roster";
 import { useYahooFreeAgents } from "@/lib/use-yahoo-free-agents";
 import { useYahooPlayerEligibility } from "@/lib/use-yahoo-player-eligibility";
 import { normalizeName } from "@/lib/name-matching";
+import { applyEligibilityOverrides } from "@/lib/apply-eligibility-overrides";
 import type { Position } from "@/lib/types";
-import type { YahooPlayerEligibility } from "@/lib/yahoo-fantasy-client";
-
-// NST (this app's stat source) only ever reports one primary position per
-// player - it has no concept of fantasy multi-position eligibility. Yahoo's
-// game-wide player list does (confirmed live: e.g. Mitch Marner shows
-// eligible at C/LW/RW), so when it's available this overrides team+
-// positions BEFORE the forward/defense split below - a player whose real
-// Yahoo eligibility includes D but whose NST-reported position doesn't
-// would otherwise land in the wrong group entirely, not just show the
-// wrong position label.
-function applyEligibilityOverrides(
-  stats: SkaterRateStats[],
-  eligibilityByName: Map<string, YahooPlayerEligibility> | null
-): SkaterRateStats[] {
-  if (!eligibilityByName) return stats;
-  return stats.map((s) => {
-    const override = eligibilityByName.get(normalizeName(s.name));
-    if (!override || override.isGoalie || override.positions.length === 0) return s;
-    return { ...s, team: override.team, positions: override.positions };
-  });
-}
 
 type PageTab = "rankings" | "compare";
 type SkaterGroup = "F" | "D";

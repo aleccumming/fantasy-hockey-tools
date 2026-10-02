@@ -20,6 +20,12 @@ const LIVE_TOOLS = [
     description:
       "Goalie strategy runs on different signals than skaters - spot-start matchups and long-term hold recommendations for who's actually getting the starts.",
   },
+  {
+    href: "/deployment",
+    name: "Deployment",
+    description:
+      "Who's recently gotten meaningfully more (or less) trusted ice time and power-play time than their track record - often the earliest sign of a breakout, before the points show up.",
+  },
 ];
 
 const COMING_SOON_TOOLS = [

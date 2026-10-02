@@ -72,8 +72,12 @@ export interface NstQueryOptions {
   fromSeason: string;
   thruSeason: string;
   gameRange: { type: "none" } | { type: "teamGames"; games: number };
-  /** Game situation to filter to. Defaults to "5v5" if omitted. */
-  situation?: "5v5" | "all";
+  /** Game situation to filter to. Defaults to "5v5" if omitted. "pp" is
+   *  power-play ice time specifically - used for the Deployment tool's PP
+   *  TOI signal (verified live: real, sane PP1 numbers come back, e.g.
+   *  Kucherov ~4.3 min/gm - same 35-column layout as "5v5"/"all", just
+   *  filtered to power-play situations). */
+  situation?: "5v5" | "all" | "pp";
 }
 
 /** Calendar-only guess, e.g. "20252026" for a reference date in the season
@@ -144,6 +148,12 @@ export async function baselineSeasonRange(referenceDate?: Date): Promise<{
   return seasonRangeSpanning(thruSeason);
 }
 
+function situationParam(situation: NstQueryOptions["situation"]): string {
+  if (situation === "all") return "all";
+  if (situation === "pp") return "pp";
+  return "5v5";
+}
+
 function buildUrl(stdoi: "std" | "oi", opts: NstQueryOptions): string {
   const key = process.env.NST_API_KEY;
   if (!key) throw new Error("NST_API_KEY is not set");
@@ -151,7 +161,7 @@ function buildUrl(stdoi: "std" | "oi", opts: NstQueryOptions): string {
     fromseason: opts.fromSeason,
     thruseason: opts.thruSeason,
     stype: "2", // regular season
-    sit: opts.situation === "all" ? "all" : "5v5",
+    sit: situationParam(opts.situation),
     score: "all",
     stdoi,
     rate: "n", // raw totals over the window - per-60 rates computed from TOI below
@@ -262,7 +272,7 @@ function buildGoalieUrl(opts: NstQueryOptions): string {
     fromseason: opts.fromSeason,
     thruseason: opts.thruSeason,
     stype: "2",
-    sit: opts.situation === "all" ? "all" : "5v5",
+    sit: situationParam(opts.situation),
     score: "all",
     stdoi: "g",
     rate: "n",
