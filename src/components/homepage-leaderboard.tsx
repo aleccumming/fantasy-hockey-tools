@@ -57,7 +57,7 @@ export function HomepageLeaderboard() {
             i % 2 === 1 ? "bg-stripe/60" : ""
           }`}
         >
-          <PlayerHeadshot name={p.name} headshots={headshots} size={24} />
+          <PlayerHeadshot name={p.name} team={p.team} positions={p.positions} headshots={headshots} size={24} />
           <div className="min-w-0 flex-1 truncate text-sm font-semibold text-ink">
             {p.name} <span className="font-normal text-ink-faint">{p.team} &middot; {p.positions.join("/")}</span>
           </div>

@@ -262,7 +262,7 @@ export function CheatSheet({ compact = false }: { compact?: boolean }) {
                   )}
                   <td className="px-3 py-2.5">
                     <div className="flex items-center gap-2">
-                      <PlayerHeadshot name={p.name} headshots={headshots} size={34} />
+                      <PlayerHeadshot name={p.name} team={p.team} positions={p.positions} headshots={headshots} size={34} />
                       <span className="font-semibold text-ink">{p.name}</span>
                     </div>
                   </td>

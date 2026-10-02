@@ -169,7 +169,7 @@ function Row({
       <td className="px-3 py-2 tabular-nums text-ink-dim">{rank}</td>
       <td className="px-3 py-2">
         <div className="flex items-center gap-2.5">
-          <PlayerHeadshot name={player.name} headshots={headshots} size={32} />
+          <PlayerHeadshot name={player.name} team={player.team} positions={player.positions} headshots={headshots} size={32} />
           <div className="min-w-0">
             <div className="truncate font-semibold text-ink" title={player.name}>
               {abbreviateFirstName(player.name)}

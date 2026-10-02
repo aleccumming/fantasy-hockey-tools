@@ -33,7 +33,13 @@ export function MyTeam() {
                   {slot.player ? (
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex min-w-0 items-center gap-2">
-                        <PlayerHeadshot name={slot.player.name} headshots={headshots} size={34} />
+                        <PlayerHeadshot
+                          name={slot.player.name}
+                          team={slot.player.team}
+                          positions={slot.player.positions}
+                          headshots={headshots}
+                          size={34}
+                        />
                         <span className="min-w-0 leading-tight">
                           <span className="block truncate font-semibold text-ink">
                             {slot.player.name}

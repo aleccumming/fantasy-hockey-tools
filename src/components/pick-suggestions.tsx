@@ -47,7 +47,7 @@ export function PickSuggestions() {
             <div className="flex items-center justify-between gap-2">
               <div className="flex min-w-0 items-center gap-2">
                 <DraftButton onClick={() => draftPlayer(player.id)} />
-                <PlayerHeadshot name={player.name} headshots={headshots} size={34} />
+                <PlayerHeadshot name={player.name} team={player.team} positions={player.positions} headshots={headshots} size={34} />
                 <div className="min-w-0">
                   <span className="font-semibold text-ink">{player.name}</span>{" "}
                   <span className="text-xs text-ink-faint">

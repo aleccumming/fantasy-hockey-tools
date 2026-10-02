@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import type { HeadshotMap } from "./headshots";
+import { headshotPositionGroup, type HeadshotMap } from "./headshots";
 import { normalizeName } from "./name-matching";
 import { useYahooPlayerEligibility } from "./use-yahoo-player-eligibility";
 
@@ -50,7 +50,15 @@ export function useHeadshots(): HeadshotMap {
     if (!eligibility) return map;
     const merged = { ...map };
     for (const p of eligibility) {
-      if (p.headshotUrl) merged[normalizeName(p.name)] = p.headshotUrl;
+      if (!p.headshotUrl) continue;
+      const name = normalizeName(p.name);
+      // Same keying scheme as headshots.ts (see its file header for why) -
+      // each eligibility row is already one distinct real player, so
+      // name+team+group can overwrite directly rather than first-wins.
+      const group = p.isGoalie ? "G" : headshotPositionGroup(p.positions);
+      if (group) merged[`${name}|${p.team}|${group}`] = p.headshotUrl;
+      merged[`${name}|${p.team}`] = p.headshotUrl;
+      merged[name] = p.headshotUrl;
     }
     return merged;
   }, [map, eligibility]);

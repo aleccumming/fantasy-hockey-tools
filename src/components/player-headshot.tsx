@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { normalizeName } from "@/lib/name-matching";
-import type { HeadshotMap } from "@/lib/headshots";
+import { headshotPositionGroup, type HeadshotMap } from "@/lib/headshots";
 
 function initialsFor(name: string): string {
   return name
@@ -16,15 +16,29 @@ function initialsFor(name: string): string {
 
 export function PlayerHeadshot({
   name,
+  team,
+  positions,
   headshots,
   size = 28,
 }: {
   name: string;
+  /** Disambiguates real NHL namesakes (e.g. the two Sebastian Ahos, the
+   *  two Elias Petterssons) - pass whenever the caller has it, which is
+   *  nearly always, since every stat/roster row already carries team. See
+   *  headshots.ts for why a plain name lookup silently picks one of two
+   *  real players at random. */
+  team?: string;
+  positions?: string[];
   headshots: HeadshotMap;
   size?: number;
 }) {
   const [errored, setErrored] = useState(false);
-  const url = headshots[normalizeName(name)];
+  const normalized = normalizeName(name);
+  const group = headshotPositionGroup(positions);
+  const url =
+    (team && group && headshots[`${normalized}|${team}|${group}`]) ||
+    (team && headshots[`${normalized}|${team}`]) ||
+    headshots[normalized];
 
   if (!url || errored) {
     return (

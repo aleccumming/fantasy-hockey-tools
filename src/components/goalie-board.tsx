@@ -152,7 +152,7 @@ function SpotStartsTable() {
               <td className="px-3 py-2 tabular-nums text-ink-dim">{i + 1}</td>
               <td className="px-3 py-2">
                 <div className="flex items-center gap-2">
-                  <PlayerHeadshot name={r.name} headshots={headshots} size={30} />
+                  <PlayerHeadshot name={r.name} team={r.team} positions={["G"]} headshots={headshots} size={30} />
                   <div>
                     <p className="font-semibold text-ink">{r.name}</p>
                     <p className="text-xs text-ink-faint">{r.team}</p>
@@ -228,7 +228,7 @@ function StartTrackerTable() {
             {teamGoalies.map((g) => (
               <div key={g.name}>
                 <div className="flex items-center gap-2">
-                  <PlayerHeadshot name={g.name} headshots={headshots} size={28} />
+                  <PlayerHeadshot name={g.name} team={g.team} positions={["G"]} headshots={headshots} size={28} />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-1.5">
                       <p className="truncate text-sm font-semibold text-ink">{g.name}</p>

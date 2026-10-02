@@ -111,7 +111,13 @@ export function DraftBoard() {
                             POSITION_COLORS[player.positions[0]] ?? "bg-ice text-ink"
                           }`}
                         >
-                          <PlayerHeadshot name={player.name} headshots={headshots} size={28} />
+                          <PlayerHeadshot
+                            name={player.name}
+                            team={player.team}
+                            positions={player.positions}
+                            headshots={headshots}
+                            size={28}
+                          />
                           <span className="min-w-0 leading-tight">
                             <span className="block truncate text-[11px] font-semibold">
                               {abbreviateName(player.name)}

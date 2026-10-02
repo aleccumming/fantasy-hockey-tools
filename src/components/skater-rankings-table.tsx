@@ -382,7 +382,7 @@ export function SkaterRankingsTable({
               <td className="px-2 py-2 tabular-nums font-semibold text-ink">{p.compositeRank.toFixed(1)}</td>
               <td className="px-3 py-2">
                 <div className="flex items-center gap-2.5">
-                  <PlayerHeadshot name={p.name} headshots={headshots} size={38} />
+                  <PlayerHeadshot name={p.name} team={p.team} positions={p.positions} headshots={headshots} size={38} />
                   <div className="min-w-0">
                     <div className="truncate font-semibold text-ink" title={p.name}>
                       {abbreviateNames ? abbreviateFirstName(p.name) : p.name}
@@ -477,7 +477,7 @@ export function SkaterRankingsCards({
       {ranked.map((p, i) => (
         <div key={p.name} className="rounded-md border border-line bg-surface p-4">
           <div className="flex items-center gap-3">
-            <PlayerHeadshot name={p.name} headshots={headshots} size={44} />
+            <PlayerHeadshot name={p.name} team={p.team} positions={p.positions} headshots={headshots} size={44} />
             <div className="min-w-0">
               <p className="truncate font-semibold text-ink">{p.name}</p>
               <p className="text-xs text-ink-faint">

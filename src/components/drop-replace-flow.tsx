@@ -374,7 +374,13 @@ export function DropReplaceFlow({
               }`}
             >
               <div className="flex items-center gap-2">
-                <PlayerHeadshot name={p.name} headshots={headshots} size={32} />
+                <PlayerHeadshot
+                  name={p.name}
+                  team={p.team}
+                  positions={p.isGoalie ? ["G"] : p.positions}
+                  headshots={headshots}
+                  size={32}
+                />
                 <div className="min-w-0">
                   <div className="flex items-center gap-1.5">
                     <span className="truncate text-sm font-semibold text-ink">{p.name}</span>
