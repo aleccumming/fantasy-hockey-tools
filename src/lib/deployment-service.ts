@@ -38,12 +38,28 @@ export interface DeploymentPlayer {
   baselinePpToiPerGame: number;
   /** recent - baseline, in minutes/game. Positive = more trusted now. */
   toiDelta: number;
+  /** Raw PP minutes/game delta - shown for context, but NOT what the
+   *  composite score ranks on (see ppShareDelta for why). */
   ppToiDelta: number;
+  /** This player's share of their OWN TEAM's total PP ice time in the
+   *  window (0-1) - what actually answers "are they on PP1," unlike raw
+   *  PP minutes, which is confounded by how many power plays the team
+   *  even got that window (a team that drew few penalties gives everyone
+   *  low raw PP TOI regardless of unit, while a true PP1 player still
+   *  claims the same large SHARE of whatever PP time existed). Same
+   *  share-of-team-total pattern already used for goalie starts
+   *  (recentShare in goalie-tracking-service.ts). */
+  recentPpShare: number;
+  baselinePpShare: number;
+  /** recentPpShare - baselinePpShare, in share points (e.g. 0.15 = moved
+   *  up 15 percentage points of the team's PP pie) - the real PP1-vs-PP2
+   *  signal, and what the composite score ranks on. */
+  ppShareDelta: number;
 }
 
 export interface RankedDeploymentPlayer extends DeploymentPlayer {
   toiDeltaRank: number;
-  ppToiDeltaRank: number;
+  ppShareDeltaRank: number;
   /** Average of the two deltas' ranks - lower is a bigger boost, same
    *  "lower is better" convention as C-Score elsewhere in this app. */
   deploymentScore: number;
@@ -80,6 +96,24 @@ function byName(rows: NstIndividualRow[]): Map<string, NstIndividualRow> {
   return new Map(rows.map((r) => [normalizeName(r.name), r]));
 }
 
+/** Sums every tracked player's PP TOI per team, from the same rows already
+ *  being fetched - the denominator for "share of the team's PP time,"
+ *  no separate team-level fetch needed. */
+function ppToiByTeam(rows: NstIndividualRow[]): Map<string, number> {
+  const totals = new Map<string, number>();
+  for (const r of rows) {
+    totals.set(r.team, (totals.get(r.team) ?? 0) + r.toi);
+  }
+  return totals;
+}
+
+function ppShare(row: NstIndividualRow | undefined, teamTotals: Map<string, number>): number {
+  if (!row) return 0;
+  const teamTotal = teamTotals.get(row.team) ?? 0;
+  if (teamTotal <= 0) return 0;
+  return row.toi / teamTotal;
+}
+
 let cache: { data: RankedDeploymentPlayer[]; expiresAt: number } | null = null;
 const CACHE_TTL_MS = 3 * 60 * 60 * 1000; // 3 hours - same cadence as the other NST-backed tools
 
@@ -111,6 +145,8 @@ export async function getDeploymentBoosts(forceRefresh = false): Promise<RankedD
   const recentPpByName = byName(recentPpRows);
   const baselineToiByName = byName(baselineToiRows);
   const baselinePpByName = byName(baselinePpRows);
+  const recentPpTeamTotals = ppToiByTeam(recentPpRows);
+  const baselinePpTeamTotals = ppToiByTeam(baselinePpRows);
 
   const players: DeploymentPlayer[] = [];
   for (const recent of recentToiRows) {
@@ -129,6 +165,8 @@ export async function getDeploymentBoosts(forceRefresh = false): Promise<RankedD
     const baselineToiPerGame = toiPerGame(baseline);
     const recentPpToiPerGame = toiPerGame(recentPp);
     const baselinePpToiPerGame = toiPerGame(baselinePp);
+    const recentPpShare = ppShare(recentPp, recentPpTeamTotals);
+    const baselinePpShare = ppShare(baselinePp, baselinePpTeamTotals);
 
     players.push({
       name: recent.name,
@@ -142,24 +180,30 @@ export async function getDeploymentBoosts(forceRefresh = false): Promise<RankedD
       baselinePpToiPerGame,
       toiDelta: recentToiPerGame - baselineToiPerGame,
       ppToiDelta: recentPpToiPerGame - baselinePpToiPerGame,
+      recentPpShare,
+      baselinePpShare,
+      ppShareDelta: recentPpShare - baselinePpShare,
     });
   }
 
   // Rank by each delta separately (bigger positive delta = rank 1), same
   // "average several underlying metric ranks" approach as C-Score, so the
-  // composite score reads the same way (lower = better/bigger boost).
+  // composite score reads the same way (lower = better/bigger boost). Uses
+  // ppShareDelta, not raw ppToiDelta, as the PP signal - see ppShareDelta's
+  // doc comment for why share is the real PP1-vs-PP2 signal and raw
+  // minutes isn't.
   const byToiDelta = [...players].sort((a, b) => b.toiDelta - a.toiDelta);
   const toiDeltaRanks = new Map<DeploymentPlayer, number>();
   byToiDelta.forEach((p, i) => toiDeltaRanks.set(p, i + 1));
 
-  const byPpToiDelta = [...players].sort((a, b) => b.ppToiDelta - a.ppToiDelta);
-  const ppToiDeltaRanks = new Map<DeploymentPlayer, number>();
-  byPpToiDelta.forEach((p, i) => ppToiDeltaRanks.set(p, i + 1));
+  const byPpShareDelta = [...players].sort((a, b) => b.ppShareDelta - a.ppShareDelta);
+  const ppShareDeltaRanks = new Map<DeploymentPlayer, number>();
+  byPpShareDelta.forEach((p, i) => ppShareDeltaRanks.set(p, i + 1));
 
   const ranked: RankedDeploymentPlayer[] = players.map((p) => {
     const toiDeltaRank = toiDeltaRanks.get(p)!;
-    const ppToiDeltaRank = ppToiDeltaRanks.get(p)!;
-    return { ...p, toiDeltaRank, ppToiDeltaRank, deploymentScore: (toiDeltaRank + ppToiDeltaRank) / 2 };
+    const ppShareDeltaRank = ppShareDeltaRanks.get(p)!;
+    return { ...p, toiDeltaRank, ppShareDeltaRank, deploymentScore: (toiDeltaRank + ppShareDeltaRank) / 2 };
   });
 
   const data = ranked.sort((a, b) => a.deploymentScore - b.deploymentScore);

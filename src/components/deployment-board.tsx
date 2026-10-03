@@ -32,6 +32,21 @@ function deltaColor(minutes: number): string {
   return "text-ink-dim";
 }
 
+function formatShare(share: number): string {
+  return `${Math.round(share * 100)}%`;
+}
+
+function formatShareDelta(share: number): string {
+  const sign = share > 0 ? "+" : share < 0 ? "−" : "";
+  return `${sign}${Math.round(Math.abs(share) * 100)}pp`;
+}
+
+function shareDeltaColor(share: number): string {
+  if (share > 0.05) return "text-rink-green";
+  if (share < -0.05) return "text-rink-red";
+  return "text-ink-dim";
+}
+
 export function DeploymentBoard() {
   const { players, computedAt, error, loading } = useDeploymentBoosts();
   const { byName: yahooEligibilityByName } = useYahooPlayerEligibility();
@@ -71,10 +86,12 @@ export function DeploymentBoard() {
     <div>
       <div className="rounded-md border-l-4 border-rink-blue bg-rink-blue-light px-4 py-2.5 text-sm text-ink">
         Compares each skater&apos;s Last {RECENT_GAMES} Games ice time against their last-season baseline - production mostly
-        follows opportunity, not the other way around, so a real jump in trusted minutes (especially power-play
-        time) is often the earliest sign of a breakout, before the points show up. Only ice time is tracked here,
-        not linemate identity specifically - no free source publishes real-time line combinations, but a genuine
-        role change almost always comes with better linemates too.
+        follows opportunity, not the other way around, so a real jump in trusted minutes is often the earliest sign
+        of a breakout, before the points show up. Power play uses each player&apos;s SHARE of their own team&apos;s
+        total PP time, not raw minutes - a team that drew few penalties gives everyone low PP minutes regardless of
+        unit, but a true PP1 player still claims the same large slice of whatever PP time existed. Only ice time is
+        tracked here, not linemate identity specifically - no free source publishes real-time line combinations, but
+        a genuine role change almost always comes with better linemates too.
         {computedAt && <> Updated {new Date(computedAt).toLocaleString()}.</>}
       </div>
 
@@ -137,13 +154,23 @@ export function DeploymentBoard() {
               >
                 &Delta; TOI
               </th>
-              <th className="px-2 py-2 text-center">PP TOI/gm (L{RECENT_GAMES})</th>
-              <th className="px-2 py-2 text-center">PP TOI/gm (Last Yr)</th>
               <th
                 className="px-2 py-2 text-center"
-                title={`Last ${RECENT_GAMES} Games PP TOI/game minus last season's PP TOI/game`}
+                title="This player's share of the team's total PP minutes, summed across every skater who saw any PP time (not the team's PP clock time) - so even a true PP1 workhorse won't show close to 100%, but the trend over time is what matters here"
               >
-                &Delta; PP TOI
+                PP Share (L{RECENT_GAMES})
+              </th>
+              <th
+                className="px-2 py-2 text-center"
+                title="This player's share of the team's total PP minutes, summed across every skater who saw any PP time (not the team's PP clock time) - so even a true PP1 workhorse won't show close to 100%, but the trend over time is what matters here"
+              >
+                PP Share (Last Yr)
+              </th>
+              <th
+                className="px-2 py-2 text-center"
+                title={`Last ${RECENT_GAMES} Games PP share minus last season's PP share, in percentage points - the real PP1-vs-PP2 signal, not raw minutes`}
+              >
+                &Delta; PP Share
               </th>
             </tr>
           </thead>
@@ -192,10 +219,20 @@ function Row({
       <td className={`px-2 py-2 text-center tabular-nums font-bold ${deltaColor(player.toiDelta)}`}>
         {formatDelta(player.toiDelta)}
       </td>
-      <td className="px-2 py-2 text-center tabular-nums text-ink-dim">{formatToi(player.recentPpToiPerGame)}</td>
-      <td className="px-2 py-2 text-center tabular-nums text-ink-faint">{formatToi(player.baselinePpToiPerGame)}</td>
-      <td className={`px-2 py-2 text-center tabular-nums font-bold ${deltaColor(player.ppToiDelta)}`}>
-        {formatDelta(player.ppToiDelta)}
+      <td
+        className="px-2 py-2 text-center tabular-nums text-ink-dim"
+        title={`${formatToi(player.recentPpToiPerGame)} PP min/gm`}
+      >
+        {formatShare(player.recentPpShare)}
+      </td>
+      <td
+        className="px-2 py-2 text-center tabular-nums text-ink-faint"
+        title={`${formatToi(player.baselinePpToiPerGame)} PP min/gm`}
+      >
+        {formatShare(player.baselinePpShare)}
+      </td>
+      <td className={`px-2 py-2 text-center tabular-nums font-bold ${shareDeltaColor(player.ppShareDelta)}`}>
+        {formatShareDelta(player.ppShareDelta)}
       </td>
     </tr>
   );
