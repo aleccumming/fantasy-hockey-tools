@@ -156,13 +156,13 @@ export function DeploymentBoard() {
               </th>
               <th
                 className="px-2 py-2 text-center"
-                title="This player's share of the team's total PP minutes, summed across every skater who saw any PP time (not the team's PP clock time) - so even a true PP1 workhorse won't show close to 100%, but the trend over time is what matters here"
+                title="This player's approximate share of the team's total power-play ice time"
               >
                 PP Share (L{RECENT_GAMES})
               </th>
               <th
                 className="px-2 py-2 text-center"
-                title="This player's share of the team's total PP minutes, summed across every skater who saw any PP time (not the team's PP clock time) - so even a true PP1 workhorse won't show close to 100%, but the trend over time is what matters here"
+                title="This player's approximate share of the team's total power-play ice time"
               >
                 PP Share (Last Yr)
               </th>

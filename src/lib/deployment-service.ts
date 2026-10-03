@@ -96,13 +96,32 @@ function byName(rows: NstIndividualRow[]): Map<string, NstIndividualRow> {
   return new Map(rows.map((r) => [normalizeName(r.name), r]));
 }
 
-/** Sums every tracked player's PP TOI per team, from the same rows already
- *  being fetched - the denominator for "share of the team's PP time,"
- *  no separate team-level fetch needed. */
+// A power play is skated 5-on-4 (or 5-on-3) the overwhelming majority of
+// the time - the advantaged team deploys 5 skaters either way, since more
+// room is a reason to keep all 5 out, not fewer. So summing every
+// individual skater's PP TOI for a team and dividing by 5 gives an
+// accurate stand-in for the team's real wall-clock PP time, matching how
+// a real line-combination report computes "% of team PP time" (looked
+// into pulling that number directly from NST's team-level report
+// instead, which does exist - but live testing showed it's flaky
+// (intermittent empty responses) and repeatedly retrying it risked
+// tripping NST's abuse detection on the API key this whole app depends
+// on, for a number this approximation already gets right without an
+// extra fetch or that risk).
+const SKATERS_ON_ICE_DURING_PP = 5;
+
+/** Approximates each team's true PP TOI (wall-clock, not summed across
+ *  players) from the same individual rows already being fetched - the
+ *  denominator for "share of the team's PP time." See
+ *  SKATERS_ON_ICE_DURING_PP above for why dividing by 5 is accurate, not
+ *  a rough guess. */
 function ppToiByTeam(rows: NstIndividualRow[]): Map<string, number> {
   const totals = new Map<string, number>();
   for (const r of rows) {
     totals.set(r.team, (totals.get(r.team) ?? 0) + r.toi);
+  }
+  for (const [team, total] of totals) {
+    totals.set(team, total / SKATERS_ON_ICE_DURING_PP);
   }
   return totals;
 }

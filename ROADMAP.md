@@ -173,18 +173,30 @@ Players' tab bar.
       PP1 numbers - e.g. Kucherov ~4.3 min/gm - same column layout as the
       existing 5v5/all reports, so no new parsing logic needed). Switched
       the PP signal from raw PP minutes/game to PP SHARE (this player's
-      minutes as a fraction of the team's total, summed across every
-      skater who saw any PP time) per feedback: raw minutes is confounded
-      by how many power plays the team even got that window - a team that
-      drew few penalties gives everyone low raw PP TOI regardless of real
-      unit, while share still correctly shows a true PP1 player claiming
-      the same large slice of whatever PP time existed. Same share-of-
-      team-total pattern goalie-tracking-service.ts already used for
-      start shares. Caveat worth knowing: shares read lower than naive
-      intuition (an elite PP1 forward shows ~15%, not ~70%) since the
-      denominator is summed player-minutes across everyone who got PP
-      time, not the team's PP clock time - the trend/delta is what
-      matters here, not the absolute number looking like "majority share."
+      share of the team's true PP ice time) per feedback: raw minutes is
+      confounded by how many power plays the team even got that window -
+      a team that drew few penalties gives everyone low raw PP TOI
+      regardless of real unit, while share still correctly shows a true
+      PP1 player claiming the same large slice of whatever PP time
+      existed. Same share-of-team-total pattern goalie-tracking-service.ts
+      already used for start shares. First version summed every skater's
+      individual PP TOI as the denominator, which reads much lower than
+      real PP1 share should (~15%, not ~70%+) since 5 skaters are
+      simultaneously on the ice - fixed per explicit follow-up feedback
+      (wanted it to match how a real line-combination report computes %
+      of team PP time) by dividing that summed total by 5 (the number of
+      skaters on the ice during a power play, virtually always true
+      whether it's 5-on-4 or 5-on-3) to approximate the team's real wall-
+      clock PP TOI instead - verified live: McDavid/Draisaitl/Kucherov
+      all landed in a realistic 65-85% PP1 share range after the fix.
+      Looked into pulling the literal number from NST's own team-level
+      report (`teamtable.php` on the bot API - confirmed it exists and
+      can return real team PP TOI) instead of approximating, but live
+      testing showed it's flaky (intermittent empty responses even with
+      verified-correct params) - didn't keep retrying it since that
+      risked tripping NST's abuse detection on the API key this whole app
+      depends on. The /5 approximation gets the same answer reliably
+      without that risk.
       Deliberately scoped to ice time only, not linemate identity - NST's
       public bot API doesn't expose line combinations, only aggregate ice
       time per situation; a real role change is a strong proxy for better
