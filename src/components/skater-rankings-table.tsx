@@ -230,8 +230,8 @@ export function SkaterRankingsTable({
   }, [ranked, sortKey, sortDir, extraColumn]);
 
   return (
-    <div className="mt-3 rounded-md border border-line bg-surface">
-      <table className="w-full table-fixed text-sm">
+    <div className="mt-3 overflow-x-auto rounded-md border border-line bg-surface">
+      <table className="w-full min-w-[1100px] table-fixed text-sm">
         <colgroup>
           <col style={{ width: "3%" }} />
           <col style={{ width: "6.5%" }} />

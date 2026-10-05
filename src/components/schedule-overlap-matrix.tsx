@@ -88,7 +88,7 @@ export function ScheduleOverlapMatrix() {
       </div>
 
       <div className="mt-4 max-h-[70vh] overflow-auto rounded border border-line">
-        <table className="w-full text-sm">
+        <table className="w-full min-w-[500px] text-sm">
           <thead>
             <tr className="sticky top-0 z-10 border-b border-line bg-surface text-left text-[11px] font-semibold uppercase tracking-wide text-ink-dim">
               <th className="px-3 py-2">Team</th>

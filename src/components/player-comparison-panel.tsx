@@ -107,7 +107,7 @@ export function PlayerComparisonPanel({
       </div>
 
       <div className="mt-3 overflow-x-auto rounded-md border border-line bg-surface">
-        <table className="w-full text-sm">
+        <table className="w-full min-w-[800px] text-sm">
           <thead>
             <tr className="border-b border-stripe bg-surface text-center text-[10px] font-semibold uppercase tracking-wide text-ink-faint">
               <th colSpan={WINDOW_COLUMNS.length} className="px-2 py-1">

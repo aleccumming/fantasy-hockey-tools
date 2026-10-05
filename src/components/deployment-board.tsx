@@ -177,8 +177,8 @@ export function DeploymentBoard() {
         <TeamMultiSelect teams={SORTED_TEAMS} selected={teamFilters} onChange={setTeamFilters} />
       </div>
 
-      <div className="mt-3 overflow-hidden rounded-md border border-line bg-surface">
-        <table className="w-full text-sm">
+      <div className="mt-3 overflow-x-auto rounded-md border border-line bg-surface">
+        <table className="w-full min-w-[900px] table-fixed text-sm">
           <colgroup>
             <col style={{ width: "4%" }} />
             <col style={{ width: "22%" }} />

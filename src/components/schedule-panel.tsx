@@ -60,8 +60,8 @@ export function SchedulePanel() {
         nights.
       </p>
 
-      <div className="mt-3 max-h-96 overflow-y-auto">
-        <table className="w-full text-sm">
+      <div className="mt-3 max-h-96 overflow-auto">
+        <table className="w-full min-w-[650px] text-sm">
           <thead>
             <tr className="border-b border-line text-left text-[11px] font-semibold uppercase tracking-wide text-ink-dim">
               <th className="px-2 py-1">Team</th>
