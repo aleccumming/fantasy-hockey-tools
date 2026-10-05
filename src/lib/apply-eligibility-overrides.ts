@@ -8,7 +8,16 @@
 // not just show the wrong label. Shared across every tool that ranks NST
 // data by name (Rankings/Compare, Deployment) rather than duplicated per
 // tool.
-import { normalizeName } from "./name-matching";
+//
+// Looks each item up by its OWN team+position first (via
+// lookupPlayerIdentity), not name alone - real NHL namesakes exist
+// (confirmed live: two Sebastian Ahos, two Elias Petterssons, the latter
+// pair even on the same team), and a name-only lookup would hand BOTH of
+// them the exact same override, forcing two real, different players to
+// identical team+position - caught live exactly this way (both
+// Petterssons collapsed to the same identity downstream in
+// deployment-board.tsx, corrupting its player-list rendering).
+import { lookupPlayerIdentity } from "./player-identity-key";
 import type { Position } from "./types";
 import type { YahooPlayerEligibility } from "./yahoo-fantasy-client";
 
@@ -18,7 +27,7 @@ export function applyEligibilityOverrides<T extends { name: string; team: string
 ): T[] {
   if (!eligibilityByName) return items;
   return items.map((item) => {
-    const override = eligibilityByName.get(normalizeName(item.name));
+    const override = lookupPlayerIdentity(eligibilityByName, item.name, item.team, item.positions);
     if (!override || override.isGoalie || override.positions.length === 0) return item;
     return { ...item, team: override.team, positions: override.positions };
   });

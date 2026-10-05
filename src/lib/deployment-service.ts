@@ -1,20 +1,22 @@
 // Server-only. "Deployment Boost" - who's recently gotten meaningfully more
 // ice time or power-play time than their established track record, the
 // single biggest leading indicator of a fantasy breakout (production
-// mostly follows opportunity, not the other way around). Compares a short
-// recent window against last season as the baseline - deliberately NOT
-// "earlier this season," since this season is still too young for that to
-// mean anything yet, and a new-season deployment change (trade, new
-// linemates, a coaching change) is exactly the signal this is built to
-// catch early.
+// mostly follows opportunity, not the other way around).
 //
-// The recent window is selectable (see DEPLOYMENT_WINDOWS below), not one
-// fixed size - per explicit feedback, a real deployment bump is worth
-// acting on fast (ideally off a single game), but a single game is also
-// noisier than a few, so this computes every window size up front and
-// lets the viewer pick, same tab pattern as the Skaters page's Last
-// 5/Last 10/Season. Defaults to the fastest (Last Game) given the stated
-// priority: "we want to be very quick with these decisions."
+// "Recent" is always the single most recent game - per explicit feedback,
+// a real deployment bump is worth acting on as fast as possible, since
+// once it's visible to anyone paying attention, everyone else is jumping
+// on the player too. What's SELECTABLE is the baseline to compare that
+// game against (see DEPLOYMENT_BASELINES below) - the previous game (the
+// fastest, noisiest signal), the 3 games before that, this season so far,
+// or last season (the most stable, least noisy baseline, and the only one
+// that means anything in the season's first couple of weeks).
+//
+// Every baseline except "last season" is isolated by SUBTRACTION (a
+// larger cumulative window minus the most recent game) rather than fetched
+// directly, so the most recent game is never counted on both sides of its
+// own comparison - e.g. "last 3 games" means the 3 games BEFORE the most
+// recent one, not the most recent 3 including it.
 //
 // Scoped to ice-time signals only (5v5+PP TOI), not linemate identity -
 // NST's public bot API (the same one this app already uses everywhere
@@ -29,8 +31,7 @@
 // a scrapeable public page - not pursued further for that reason.)
 import type { Position } from "./types";
 import { fetchIndividualStats, currentNstSeason, previousNstSeason, type NstIndividualRow } from "./nst-client";
-import { normalizeName } from "./name-matching";
-import { headshotPositionGroup } from "./headshots";
+import { buildPlayerIdentityMap, lookupPlayerIdentity } from "./player-identity-key";
 
 export interface DeploymentPlayer {
   name: string;
@@ -71,34 +72,35 @@ export interface RankedDeploymentPlayer extends DeploymentPlayer {
   deploymentScore: number;
 }
 
-// Selectable "recent window" sizes, in order of how many of a team's most
-// recent games count as "recent" - started as one fixed 10-game window,
-// shrunk to a fixed 3 per feedback (a 10-game window was reacting far
-// slower than an attentive fan would), then made selectable with Last
-// Game added per further feedback (PP-unit bumps especially are worth
-// acting on fast, ideally off a single game - but a single game is also
-// noisier, so Last 3/Last 5 stay available as steadier alternate views).
-export const DEPLOYMENT_WINDOWS = [1, 3, 5] as const;
-export type DeploymentWindow = (typeof DEPLOYMENT_WINDOWS)[number];
-export const DEFAULT_DEPLOYMENT_WINDOW: DeploymentWindow = 1;
+// Selectable baselines to compare the most recent game against - see file
+// header for why "recent" itself isn't selectable (always the most recent
+// game) while the baseline is.
+export const DEPLOYMENT_BASELINES = ["previousGame", "last3Games", "thisSeason", "lastSeason"] as const;
+export type DeploymentBaseline = (typeof DEPLOYMENT_BASELINES)[number];
+export const DEFAULT_DEPLOYMENT_BASELINE: DeploymentBaseline = "lastSeason";
 
-export type DeploymentBoostsByWindow = Record<DeploymentWindow, RankedDeploymentPlayer[]>;
+export type DeploymentBoostsByBaseline = Record<DeploymentBaseline, RankedDeploymentPlayer[]>;
 
-// Deliberately just 1, not tied to whichever window is selected - this
-// tool's whole point is catching a real role change as early as possible,
-// and a window can't contain more than a couple of real games in the
-// season's first week or two anyway (caught live: a flat MIN_RECENT_GP of
-// 3 excluded literally every player on opening week, including McDavid at
-// 2 GP - the same class of early-season sample-size bug already hit twice
-// elsewhere this session). A single game's TOI is noisier than an average
-// over several, but the baseline comparison is what actually filters out
-// noise here, not this floor.
-// Below this many games LAST season, the baseline itself is too thin to
-// trust (also naturally excludes true rookies with no real prior-season
-// track record, who have nothing to compare against yet) - this one isn't
-// subject to the early-season problem since last season is already over.
+// The most recent game needs no floor beyond "played in it" - this tool's
+// whole point is catching a role change as early as possible (caught live
+// earlier: a flat floor of 3 excluded literally every player on opening
+// week, including McDavid at 2 GP - the same class of early-season
+// sample-size bug already hit twice elsewhere this session).
 const MIN_RECENT_GP = 1;
-const MIN_BASELINE_GP = 10;
+
+// Per baseline: the isolated windows (previous game, last 3 games, this
+// season so far) can't realistically clear a double-digit floor early in
+// a season, so they just need SOME games to compare against. Last season
+// is a full season, so it keeps the stricter floor - below it, the
+// baseline itself is too thin to trust (also naturally excludes true
+// rookies with no real prior-season track record, who have nothing to
+// compare against yet).
+const MIN_BASELINE_GP: Record<DeploymentBaseline, number> = {
+  previousGame: 1,
+  last3Games: 1,
+  thisSeason: 1,
+  lastSeason: 10,
+};
 
 function toiPerGame(row: NstIndividualRow | undefined): number {
   if (!row || row.gp <= 0) return 0;
@@ -110,30 +112,17 @@ function toiPerGame(row: NstIndividualRow | undefined): number {
 // forward one defenseman) - a plain name-keyed Map silently drops one of
 // them at construction (Map keys must be unique, so the later row in the
 // array wins), and whichever player loses ends up looking up the OTHER
-// player's stats everywhere this key is used. Same name+team+position-
-// group disambiguation already used for headshot lookups (headshots.ts),
-// reused here via headshotPositionGroup rather than a third
-// reimplementation of the same idea.
-function playerKey(name: string, team: string, position: string): string {
-  return `${normalizeName(name)}|${team}|${headshotPositionGroup([position])}`;
-}
-
-/** Two-tier lookup, same idea as headshots.ts: the specific name+team+
- *  position key resolves a collision correctly as long as the player
- *  hasn't changed teams between the two rows being matched (recent vs.
- *  baseline/last season) - but a trade WOULD change the recent row's
- *  team out from under a specific key built against it, so a plain-name
- *  fallback (first-wins) stays available for the (much more common, and
- *  not a collision) case of a player who's just been traded since last
- *  season. */
+// player's stats everywhere this key is used. Shared name+team+position-
+// group disambiguation (player-identity-key.ts, same scheme headshot
+// lookups and the Yahoo eligibility override already use - this bug class
+// turned out to need the same fix in all three places, not just here).
 function byPlayerKey(rows: NstIndividualRow[]): Map<string, NstIndividualRow> {
-  const map = new Map<string, NstIndividualRow>();
-  for (const r of rows) {
-    map.set(playerKey(r.name, r.team, r.position), r);
-    const fallback = normalizeName(r.name);
-    if (!map.has(fallback)) map.set(fallback, r);
-  }
-  return map;
+  return buildPlayerIdentityMap(
+    rows,
+    (r) => r.name,
+    (r) => r.team,
+    (r) => [r.position]
+  );
 }
 
 function lookupPlayer(
@@ -142,7 +131,30 @@ function lookupPlayer(
   team: string,
   position: string
 ): NstIndividualRow | undefined {
-  return map.get(playerKey(name, team, position)) ?? map.get(normalizeName(name));
+  return lookupPlayerIdentity(map, name, team, [position]);
+}
+
+/** Isolates a middle stretch of games by subtracting a smaller cumulative
+ *  window from a larger one that contains it (e.g. last 4 games minus the
+ *  most recent 1 = the 3 games before that) - only gp/toi are subtracted
+ *  correctly, since those are the only fields this tool reads from these
+ *  rows; every other field is carried over from the larger window as-is
+ *  and should be treated as meaningless on the result (not used anywhere
+ *  here, but worth knowing if this gets reused for something else later).
+ *  A player who didn't play in the isolated stretch (gp comes out <= 0)
+ *  is dropped rather than kept at zero, same as "missing from the report
+ *  entirely" elsewhere in this file. */
+function subtractRows(larger: NstIndividualRow[], smaller: NstIndividualRow[]): NstIndividualRow[] {
+  const smallerByKey = byPlayerKey(smaller);
+  const result: NstIndividualRow[] = [];
+  for (const row of larger) {
+    const sub = lookupPlayer(smallerByKey, row.name, row.team, row.position);
+    const gp = row.gp - (sub?.gp ?? 0);
+    const toi = row.toi - (sub?.toi ?? 0);
+    if (gp <= 0) continue;
+    result.push({ ...row, gp, toi });
+  }
+  return result;
 }
 
 // A power play is skated 5-on-4 (or 5-on-3) the overwhelming majority of
@@ -210,59 +222,56 @@ function ppShare(
   return row.toi / scaledTeamTotal;
 }
 
-interface WindowRows {
-  recentToiRows: NstIndividualRow[];
-  recentPpRows: NstIndividualRow[];
+interface SituationRows {
+  toiRows: NstIndividualRow[];
+  ppRows: NstIndividualRow[];
 }
 
-/** Everything that doesn't depend on which recent window is selected -
- *  fetched once and reused across all of DEPLOYMENT_WINDOWS. */
-interface BaselineData {
-  baselineToiByName: Map<string, NstIndividualRow>;
-  baselinePpByName: Map<string, NstIndividualRow>;
-  baselinePpTeamTotals: Map<string, number>;
-  baselineTeamGames: Map<string, number>;
-}
-
-function computeWindow(
-  { recentToiRows, recentPpRows }: WindowRows,
-  { baselineToiByName, baselinePpByName, baselinePpTeamTotals, baselineTeamGames }: BaselineData
+function computeDeployment(
+  recent: SituationRows,
+  baseline: SituationRows,
+  minBaselineGp: number
 ): RankedDeploymentPlayer[] {
-  const recentPpByName = byPlayerKey(recentPpRows);
-  const recentPpTeamTotals = summedPpToiByTeam(recentPpRows);
-  const recentTeamGames = teamGamesByTeam(recentToiRows);
+  const baselineToiByName = byPlayerKey(baseline.toiRows);
+  const baselinePpByName = byPlayerKey(baseline.ppRows);
+  const baselinePpTeamTotals = summedPpToiByTeam(baseline.ppRows);
+  const baselineTeamGames = teamGamesByTeam(baseline.toiRows);
+
+  const recentPpByName = byPlayerKey(recent.ppRows);
+  const recentPpTeamTotals = summedPpToiByTeam(recent.ppRows);
+  const recentTeamGames = teamGamesByTeam(recent.toiRows);
 
   const players: DeploymentPlayer[] = [];
-  for (const recent of recentToiRows) {
-    if (recent.gp < MIN_RECENT_GP) continue;
-    const baseline = lookupPlayer(baselineToiByName, recent.name, recent.team, recent.position);
-    if (!baseline || baseline.gp < MIN_BASELINE_GP) continue; // no real last-season track record to compare against
+  for (const r of recent.toiRows) {
+    if (r.gp < MIN_RECENT_GP) continue;
+    const b = lookupPlayer(baselineToiByName, r.name, r.team, r.position);
+    if (!b || b.gp < minBaselineGp) continue; // no real baseline track record to compare against
 
     // Missing from the PP report entirely means real 0 PP time, not
     // missing data - a player who went from 0 PP time to getting some is
     // exactly the kind of boost this tool exists to catch. Looked up
     // using each row's OWN team/position (recent's for the recent PP
     // report, baseline's for the baseline PP report) rather than always
-    // recent's, since a traded player's last-season team can differ from
-    // their current one.
-    const recentPp = lookupPlayer(recentPpByName, recent.name, recent.team, recent.position);
-    const baselinePp = lookupPlayer(baselinePpByName, baseline.name, baseline.team, baseline.position);
+    // recent's, since a traded player's baseline-window team can differ
+    // from their current one.
+    const recentPp = lookupPlayer(recentPpByName, r.name, r.team, r.position);
+    const baselinePp = lookupPlayer(baselinePpByName, b.name, b.team, b.position);
 
-    const recentToiPerGame = toiPerGame(recent);
-    const baselineToiPerGame = toiPerGame(baseline);
+    const recentToiPerGame = toiPerGame(r);
+    const baselineToiPerGame = toiPerGame(b);
     const recentPpToiPerGame = toiPerGame(recentPp);
     const baselinePpToiPerGame = toiPerGame(baselinePp);
-    const recentPpShare = ppShare(recentPp, recent.gp, recentPpTeamTotals, recentTeamGames);
-    const baselinePpShare = ppShare(baselinePp, baseline.gp, baselinePpTeamTotals, baselineTeamGames);
+    const recentPpShare = ppShare(recentPp, r.gp, recentPpTeamTotals, recentTeamGames);
+    const baselinePpShare = ppShare(baselinePp, b.gp, baselinePpTeamTotals, baselineTeamGames);
 
     players.push({
-      name: recent.name,
-      team: recent.team,
-      positions: [recent.position],
-      recentGamesPlayed: recent.gp,
+      name: r.name,
+      team: r.team,
+      positions: [r.position],
+      recentGamesPlayed: r.gp,
       recentToiPerGame,
       recentPpToiPerGame,
-      baselineGamesPlayed: baseline.gp,
+      baselineGamesPlayed: b.gp,
       baselineToiPerGame,
       baselinePpToiPerGame,
       toiDelta: recentToiPerGame - baselineToiPerGame,
@@ -296,10 +305,10 @@ function computeWindow(
   return ranked.sort((a, b) => a.deploymentScore - b.deploymentScore);
 }
 
-let cache: { data: DeploymentBoostsByWindow; expiresAt: number } | null = null;
+let cache: { data: DeploymentBoostsByBaseline; expiresAt: number } | null = null;
 const CACHE_TTL_MS = 3 * 60 * 60 * 1000; // 3 hours - same cadence as the other NST-backed tools
 
-export async function getDeploymentBoosts(forceRefresh = false): Promise<DeploymentBoostsByWindow> {
+export async function getDeploymentBoosts(forceRefresh = false): Promise<DeploymentBoostsByBaseline> {
   if (!forceRefresh && cache && cache.expiresAt > Date.now()) {
     return cache.data;
   }
@@ -307,42 +316,53 @@ export async function getDeploymentBoosts(forceRefresh = false): Promise<Deploym
   const season = await currentNstSeason();
   const lastSeason = previousNstSeason(season);
 
-  const windowFetches = DEPLOYMENT_WINDOWS.map(
-    async (games): Promise<[DeploymentWindow, WindowRows]> => {
-      const [recentToiRows, recentPpRows] = await Promise.all([
-        fetchIndividualStats({
-          fromSeason: season,
-          thruSeason: season,
-          gameRange: { type: "teamGames", games },
-          situation: "all",
-        }),
-        fetchIndividualStats({
-          fromSeason: season,
-          thruSeason: season,
-          gameRange: { type: "teamGames", games },
-          situation: "pp",
-        }),
-      ]);
-      return [games, { recentToiRows, recentPpRows }];
-    }
-  );
+  function fetchGames(games: number | null, fromSeason: string, thruSeason: string): Promise<SituationRows> {
+    const gameRange = games === null ? ({ type: "none" } as const) : ({ type: "teamGames", games } as const);
+    return Promise.all([
+      fetchIndividualStats({ fromSeason, thruSeason, gameRange, situation: "all" }),
+      fetchIndividualStats({ fromSeason, thruSeason, gameRange, situation: "pp" }),
+    ]).then(([toiRows, ppRows]) => ({ toiRows, ppRows }));
+  }
 
-  const [windowResults, baselineToiRows, baselinePpRows] = await Promise.all([
-    Promise.all(windowFetches),
-    fetchIndividualStats({ fromSeason: lastSeason, thruSeason: lastSeason, gameRange: { type: "none" }, situation: "all" }),
-    fetchIndividualStats({ fromSeason: lastSeason, thruSeason: lastSeason, gameRange: { type: "none" }, situation: "pp" }),
+  const [window1, window2, window4, thisSeasonFull, lastSeasonFull] = await Promise.all([
+    fetchGames(1, season, season),
+    fetchGames(2, season, season),
+    fetchGames(4, season, season),
+    fetchGames(null, season, season),
+    fetchGames(null, lastSeason, lastSeason),
   ]);
 
-  const baselineData: BaselineData = {
-    baselineToiByName: byPlayerKey(baselineToiRows),
-    baselinePpByName: byPlayerKey(baselinePpRows),
-    baselinePpTeamTotals: summedPpToiByTeam(baselinePpRows),
-    baselineTeamGames: teamGamesByTeam(baselineToiRows),
+  const recent = window1; // always the single most recent game
+
+  const baselinesBySource: Record<Exclude<DeploymentBaseline, "lastSeason">, SituationRows> = {
+    // The game right before the most recent one: window(2) contains both,
+    // subtracting window(1) isolates just the earlier of the two.
+    previousGame: {
+      toiRows: subtractRows(window2.toiRows, window1.toiRows),
+      ppRows: subtractRows(window2.ppRows, window1.ppRows),
+    },
+    // The 3 games before the most recent one: window(4) contains all 4,
+    // subtracting window(1) leaves the 3 before it.
+    last3Games: {
+      toiRows: subtractRows(window4.toiRows, window1.toiRows),
+      ppRows: subtractRows(window4.ppRows, window1.ppRows),
+    },
+    // This season so far, EXCLUDING the most recent game - otherwise the
+    // most recent game would be compared partly against itself.
+    thisSeason: {
+      toiRows: subtractRows(thisSeasonFull.toiRows, window1.toiRows),
+      ppRows: subtractRows(thisSeasonFull.ppRows, window1.ppRows),
+    },
   };
 
-  const data = Object.fromEntries(
-    windowResults.map(([games, rows]) => [games, computeWindow(rows, baselineData)])
-  ) as DeploymentBoostsByWindow;
+  const data: DeploymentBoostsByBaseline = {
+    previousGame: computeDeployment(recent, baselinesBySource.previousGame, MIN_BASELINE_GP.previousGame),
+    last3Games: computeDeployment(recent, baselinesBySource.last3Games, MIN_BASELINE_GP.last3Games),
+    thisSeason: computeDeployment(recent, baselinesBySource.thisSeason, MIN_BASELINE_GP.thisSeason),
+    // A separate season entirely - no subtraction needed, the most recent
+    // game can't double-count against a different season's totals.
+    lastSeason: computeDeployment(recent, lastSeasonFull, MIN_BASELINE_GP.lastSeason),
+  };
 
   cache = { data, expiresAt: Date.now() + CACHE_TTL_MS };
   return data;

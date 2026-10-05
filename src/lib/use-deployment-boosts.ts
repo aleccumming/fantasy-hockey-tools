@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { DeploymentBoostsByWindow } from "./deployment-service";
+import type { DeploymentBoostsByBaseline } from "./deployment-service";
 
 interface DeploymentBoostsResponse {
-  windows: DeploymentBoostsByWindow;
+  baselines: DeploymentBoostsByBaseline;
   computedAt: string;
 }
 
@@ -34,7 +34,7 @@ export function useDeploymentBoosts() {
   }, []);
 
   return {
-    windows: data?.windows ?? null,
+    baselines: data?.baselines ?? null,
     computedAt: data?.computedAt ?? null,
     error,
     loading: !error && !data,

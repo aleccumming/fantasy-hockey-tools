@@ -10,9 +10,9 @@ import { abbreviateFirstName } from "@/components/skater-rankings-table";
 import { TeamMultiSelect } from "@/components/team-multi-select";
 import { NHL_TEAMS } from "@/lib/schedule";
 import {
-  DEPLOYMENT_WINDOWS,
-  DEFAULT_DEPLOYMENT_WINDOW,
-  type DeploymentWindow,
+  DEPLOYMENT_BASELINES,
+  DEFAULT_DEPLOYMENT_BASELINE,
+  type DeploymentBaseline,
   type RankedDeploymentPlayer,
 } from "@/lib/deployment-service";
 
@@ -20,9 +20,12 @@ type Direction = "boosts" | "drops";
 
 const SORTED_TEAMS = [...NHL_TEAMS].sort((a, b) => a.localeCompare(b));
 
-function windowLabel(games: DeploymentWindow): string {
-  return games === 1 ? "Last Game" : `Last ${games} Games`;
-}
+const BASELINE_LABELS: Record<DeploymentBaseline, string> = {
+  previousGame: "Previous Game",
+  last3Games: "Last 3 Games",
+  thisSeason: "This Season",
+  lastSeason: "Last Season",
+};
 
 // Real NHL players can share an exact name (confirmed live: two
 // Sebastian Ahos, and two Elias Petterssons - who are even on the SAME
@@ -73,15 +76,15 @@ function shareDeltaColor(share: number): string {
 }
 
 export function DeploymentBoard() {
-  const { windows, computedAt, error, loading } = useDeploymentBoosts();
+  const { baselines, computedAt, error, loading } = useDeploymentBoosts();
   const { byName: yahooEligibilityByName } = useYahooPlayerEligibility();
   const headshots = useHeadshots();
-  const [window_, setWindow] = useState<DeploymentWindow>(DEFAULT_DEPLOYMENT_WINDOW);
+  const [baseline, setBaseline] = useState<DeploymentBaseline>(DEFAULT_DEPLOYMENT_BASELINE);
   const [direction, setDirection] = useState<Direction>("boosts");
   const [teamFilters, setTeamFilters] = useState<Set<string>>(new Set());
   const [nameQuery, setNameQuery] = useState("");
 
-  const players = windows?.[window_] ?? null;
+  const players = baselines?.[baseline] ?? null;
 
   const corrected = useMemo(
     () => applyEligibilityOverrides(players ?? [], yahooEligibilityByName),
@@ -113,28 +116,30 @@ export function DeploymentBoard() {
   return (
     <div>
       <div className="rounded-md border-l-4 border-rink-blue bg-rink-blue-light px-4 py-2.5 text-sm text-ink">
-        Compares each skater&apos;s recent ice time against their last-season baseline - production mostly follows
+        Compares each skater&apos;s MOST RECENT GAME against a baseline you pick below - production mostly follows
         opportunity, not the other way around, so a real jump in trusted minutes is often the earliest sign of a
-        breakout, before the points show up. Power play uses each player&apos;s SHARE of their own team&apos;s total
-        PP time, not raw minutes - a team that drew few penalties gives everyone low PP minutes regardless of unit,
-        but a true PP1 player still claims the same large slice of whatever PP time existed. Only ice time is tracked
-        here, not linemate identity specifically - no free source publishes real-time line combinations, but a
-        genuine role change almost always comes with better linemates too.
+        breakout, before the points show up, and once it&apos;s visible everyone else is jumping on the player too.
+        Previous Game is the fastest, noisiest read; Last Season is the steadiest. Power play uses each
+        player&apos;s SHARE of their own team&apos;s total PP time, not raw minutes - a team that drew few penalties
+        gives everyone low PP minutes regardless of unit, but a true PP1 player still claims the same large slice of
+        whatever PP time existed. Only ice time is tracked here, not linemate identity specifically - no free source
+        publishes real-time line combinations, but a genuine role change almost always comes with better linemates
+        too.
         {computedAt && <> Updated {new Date(computedAt).toLocaleString()}.</>}
       </div>
 
       <div className="mt-4 flex gap-1">
-        {DEPLOYMENT_WINDOWS.map((games) => (
+        {DEPLOYMENT_BASELINES.map((b) => (
           <button
-            key={games}
-            onClick={() => setWindow(games)}
+            key={b}
+            onClick={() => setBaseline(b)}
             className={`rounded px-2.5 py-1 text-xs font-semibold ${
-              window_ === games
+              baseline === b
                 ? "bg-rink-blue text-white"
                 : "border border-line bg-surface text-ink-dim hover:border-rink-blue hover:text-rink-blue"
             }`}
           >
-            {windowLabel(games)}
+            vs. {BASELINE_LABELS[b]}
           </button>
         ))}
       </div>
@@ -189,12 +194,12 @@ export function DeploymentBoard() {
             <tr className="border-b border-line bg-surface text-left text-[11px] font-semibold uppercase tracking-wide text-ink-dim">
               <th className="px-3 py-2">#</th>
               <th className="px-3 py-2">Player</th>
-              <th className="px-2 py-2 text-center">GP ({windowLabel(window_)})</th>
-              <th className="px-2 py-2 text-center">TOI/gm ({windowLabel(window_)})</th>
-              <th className="px-2 py-2 text-center">TOI/gm (Last Yr)</th>
+              <th className="px-2 py-2 text-center">GP (Last Game)</th>
+              <th className="px-2 py-2 text-center">TOI/gm (Last Game)</th>
+              <th className="px-2 py-2 text-center">TOI/gm ({BASELINE_LABELS[baseline]})</th>
               <th
                 className="px-2 py-2 text-center"
-                title={`${windowLabel(window_)} TOI/game minus last season's TOI/game`}
+                title={`Last game's TOI/game minus ${BASELINE_LABELS[baseline]}'s TOI/game`}
               >
                 &Delta; TOI
               </th>
@@ -202,17 +207,17 @@ export function DeploymentBoard() {
                 className="px-2 py-2 text-center"
                 title="This player's approximate share of the team's total power-play ice time, scaled to the games they actually played"
               >
-                PP Share ({windowLabel(window_)})
+                PP Share (Last Game)
               </th>
               <th
                 className="px-2 py-2 text-center"
                 title="This player's approximate share of the team's total power-play ice time, scaled to the games they actually played"
               >
-                PP Share (Last Yr)
+                PP Share ({BASELINE_LABELS[baseline]})
               </th>
               <th
                 className="px-2 py-2 text-center"
-                title={`${windowLabel(window_)} PP share minus last season's PP share, in percentage points - the real PP1-vs-PP2 signal, not raw minutes`}
+                title={`Last game's PP share minus ${BASELINE_LABELS[baseline]}'s PP share, in percentage points - the real PP1-vs-PP2 signal, not raw minutes`}
               >
                 &Delta; PP Share
               </th>

@@ -220,7 +220,19 @@ Players' tab bar.
       Made the recent window selectable (2026-10-04, Last Game/Last
       3/Last 5 - `DEPLOYMENT_WINDOWS`) per feedback: PP-unit bumps
       especially are worth acting on fast, ideally off a single game,
-      defaults to Last Game. Switched PP share's denominator from raw
+      defaults to Last Game. **Superseded same day** by a clearer
+      restatement of that feedback: "recent" should always be the single
+      most recent game (not a selectable window), and what should be
+      selectable is the BASELINE to compare it against - previous game
+      (fastest/noisiest), last 3 games, this season so far, or last
+      season (steadiest, and the only one that means anything in the
+      season's first couple of weeks) - `DEPLOYMENT_BASELINES` in
+      `deployment-service.ts`, defaults to Last Season. Every baseline
+      except Last Season is isolated by subtracting a smaller cumulative
+      NST window from a larger one that contains it (e.g. last 4 games
+      minus the most recent 1 = the 3 games before it) rather than
+      fetched directly, so the most recent game is never counted on both
+      sides of its own comparison. Switched PP share's denominator from raw
       summed player-minutes to an approximation of the team's true wall-
       clock PP TOI (divide by `SKATERS_ON_ICE_DURING_PP` = 5) per
       follow-up feedback wanting it to match how a real line-combination
@@ -245,21 +257,36 @@ Players' tab bar.
       so one of the two real players was computing off the OTHER
       player's stats entirely, not just getting the wrong team label -
       caught by noticing both Petterssons showed the identical PP share
-      value to 13 decimal places. Fixed with the same name+team+position-
-      group key scheme as headshots.ts (`playerKey`/`byPlayerKey` in
-      deployment-service.ts), with a plain-name fallback tier so a
-      traded player (team genuinely changed between the recent and
-      baseline window) still resolves correctly. The equivalent React
-      key bug (`key={p.name}` - duplicate keys on a reordering list,
-      which is what actually surfaced this: switching Biggest Boosts/
-      Biggest Drops a few times started showing visibly wrong/duplicated
-      rows) was fixed the same way in `deployment-board.tsx`, plus
-      defensively in `skater-rankings-table.tsx` and
-      `homepage-leaderboard.tsx` (lower risk there since both already
+      value to 13 decimal places. First fix: a local name+team+position-
+      group key scheme matching headshots.ts, plus a React key fix in
+      `deployment-board.tsx` (`key={p.name}` - duplicate keys on a
+      reordering list, which is what actually surfaced this: switching
+      Biggest Boosts/Biggest Drops a few times started showing visibly
+      wrong/duplicated rows). **That fix alone turned out insufficient**
+      - confirmed by the user still seeing the same corruption - because
+      `applyEligibilityOverrides` (which runs AFTER this tool's own data
+      is built, overlaying real Yahoo multi-position eligibility) was
+      ALSO looking the Yahoo data up by plain name via
+      `useYahooPlayerEligibility`'s own `byName` map, so it forced BOTH
+      Petterssons to the SAME team+position before the page ever saw
+      them - erasing the very distinction the first fix relied on. Pulled
+      the disambiguation logic out into a shared
+      `player-identity-key.ts` (`playerIdentityKey`/
+      `buildPlayerIdentityMap`/`lookupPlayerIdentity` - specific
+      name+team+position key first, plain-name fallback for a genuinely
+      traded player) and applied it in all three places that turned out
+      to need it: `deployment-service.ts`'s internal joins,
+      `useYahooPlayerEligibility`'s `byName` map, and
+      `applyEligibilityOverrides`'s lookup (now keyed by each item's OWN
+      team+position, not name alone). Defensively applied the same React
+      key fix in `skater-rankings-table.tsx` and
+      `homepage-leaderboard.tsx` too (lower risk there since both already
       split players into forward/defense groups before rendering, which
       happens to separate both known collision pairs - but not a
       structural guarantee against some other, currently-unknown,
-      same-position collision).
+      same-position collision - and both run through the same
+      `applyEligibilityOverrides` that was the real root cause, so they
+      needed the underlying fix regardless of the rendering-level risk).
       **Known remaining gap, not yet fixed**: `PlayerSearchPicker` (used
       by Compare's player pickers and the manual/sample roster editor)
       and the manual roster editor's own matching logic
