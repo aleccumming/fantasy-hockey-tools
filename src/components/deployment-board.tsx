@@ -5,6 +5,9 @@ import { useDeploymentBoosts } from "@/lib/use-deployment-boosts";
 import { useYahooPlayerEligibility } from "@/lib/use-yahoo-player-eligibility";
 import { applyEligibilityOverrides } from "@/lib/apply-eligibility-overrides";
 import { useHeadshots } from "@/lib/use-headshots";
+import { useMyRoster } from "@/lib/use-my-roster";
+import { useYahooFreeAgents } from "@/lib/use-yahoo-free-agents";
+import { normalizeName } from "@/lib/name-matching";
 import { PlayerHeadshot } from "@/components/player-headshot";
 import { abbreviateFirstName } from "@/components/skater-rankings-table";
 import { TeamMultiSelect } from "@/components/team-multi-select";
@@ -17,6 +20,7 @@ import {
 } from "@/lib/deployment-service";
 
 type Direction = "boosts" | "drops";
+type OwnershipFilter = "all" | "unowned";
 
 const SORTED_TEAMS = [...NHL_TEAMS].sort((a, b) => a.localeCompare(b));
 
@@ -75,12 +79,15 @@ function shareDeltaColor(share: number): string {
   return "text-ink-dim";
 }
 
-export function DeploymentBoard() {
+export function DeploymentBoard({ activeLeagueKey }: { activeLeagueKey: string | null }) {
   const { baselines, computedAt, error, loading } = useDeploymentBoosts();
   const { byName: yahooEligibilityByName } = useYahooPlayerEligibility();
   const headshots = useHeadshots();
+  const { roster } = useMyRoster();
+  const { freeAgents: yahooFreeAgents } = useYahooFreeAgents(activeLeagueKey);
   const [baseline, setBaseline] = useState<DeploymentBaseline>(DEFAULT_DEPLOYMENT_BASELINE);
   const [direction, setDirection] = useState<Direction>("boosts");
+  const [ownershipFilter, setOwnershipFilter] = useState<OwnershipFilter>("all");
   const [teamFilters, setTeamFilters] = useState<Set<string>>(new Set());
   const [nameQuery, setNameQuery] = useState("");
 
@@ -93,9 +100,18 @@ export function DeploymentBoard() {
 
   const filtered = useMemo(() => {
     const query = nameQuery.trim().toLowerCase();
+    // "Unowned" = actually available per the connected Yahoo league when
+    // one's active; otherwise just "not on my (sample/manual) roster" -
+    // same convention as the Skaters page's ownership filter.
+    const availableSet = yahooFreeAgents ? new Set(yahooFreeAgents.map((fa) => normalizeName(fa.name))) : null;
+    const rosterSet = new Set(roster.map((p) => normalizeName(p.name)));
     const rows = corrected.filter((p) => {
       if (teamFilters.size > 0 && !teamFilters.has(p.team)) return false;
       if (query && !p.name.toLowerCase().includes(query)) return false;
+      if (ownershipFilter === "unowned") {
+        const key = normalizeName(p.name);
+        if (availableSet ? !availableSet.has(key) : rosterSet.has(key)) return false;
+      }
       return true;
     });
     // Players are already sorted ascending by deploymentScore (biggest
@@ -104,7 +120,7 @@ export function DeploymentBoard() {
     // (a low score = ranks well on both deltas, a high score = ranks
     // poorly on both, i.e. a real decline in trust on both fronts).
     return direction === "boosts" ? rows : [...rows].reverse();
-  }, [corrected, teamFilters, nameQuery, direction]);
+  }, [corrected, teamFilters, nameQuery, direction, ownershipFilter, roster, yahooFreeAgents]);
 
   if (loading) {
     return <p className="mt-6 text-center text-sm text-ink-dim">Loading live deployment data from Natural Stat Trick...</p>;
@@ -174,8 +190,43 @@ export function DeploymentBoard() {
           placeholder="Search player..."
           className="w-48 rounded border border-line bg-surface px-2 py-1 text-xs text-ink placeholder:text-ink-faint focus:border-rink-blue focus:outline-none"
         />
+        <div
+          className="flex gap-1"
+          title={
+            yahooFreeAgents
+              ? "Unowned reflects your connected Yahoo league's real free agents"
+              : "Unowned uses a sample/manual roster until a Yahoo league is connected"
+          }
+        >
+          <button
+            onClick={() => setOwnershipFilter("all")}
+            className={`rounded px-2.5 py-1 text-xs font-semibold ${
+              ownershipFilter === "all"
+                ? "bg-rink-blue text-white"
+                : "border border-line bg-surface text-ink-dim hover:border-rink-blue hover:text-rink-blue"
+            }`}
+          >
+            All Skaters
+          </button>
+          <button
+            onClick={() => setOwnershipFilter("unowned")}
+            className={`rounded px-2.5 py-1 text-xs font-semibold ${
+              ownershipFilter === "unowned"
+                ? "bg-rink-blue text-white"
+                : "border border-line bg-surface text-ink-dim hover:border-rink-blue hover:text-rink-blue"
+            }`}
+          >
+            Unowned
+          </button>
+        </div>
         <TeamMultiSelect teams={SORTED_TEAMS} selected={teamFilters} onChange={setTeamFilters} />
       </div>
+
+      {ownershipFilter === "unowned" && !yahooFreeAgents && (
+        <p className="mt-2 text-xs text-ink-faint">
+          Filtered against a sample/manual roster - connect a Yahoo league for real ownership data.
+        </p>
+      )}
 
       <div className="mt-3 overflow-x-auto rounded-md border border-line bg-surface">
         <table className="w-full min-w-[900px] table-fixed text-sm">

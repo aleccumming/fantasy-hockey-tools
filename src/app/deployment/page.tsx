@@ -1,8 +1,11 @@
 "use client";
 
 import { DeploymentBoard } from "@/components/deployment-board";
+import { useActiveYahooLeague } from "@/lib/yahoo-league-context";
 
 export default function DeploymentPage() {
+  const { activeLeagueKey } = useActiveYahooLeague();
+
   return (
     <main className="mx-auto max-w-[1400px] px-4 py-6 sm:px-6">
       <h1 className="font-display text-3xl font-extrabold uppercase tracking-wide text-ink">
@@ -16,7 +19,7 @@ export default function DeploymentPage() {
       </p>
 
       <div className="mt-6">
-        <DeploymentBoard />
+        <DeploymentBoard activeLeagueKey={activeLeagueKey} />
       </div>
     </main>
   );
