@@ -6,10 +6,15 @@
 // "earlier this season," since this season is still too young for that to
 // mean anything yet, and a new-season deployment change (trade, new
 // linemates, a coaching change) is exactly the signal this is built to
-// catch early. The recent window itself is intentionally short (see
-// RECENT_GAMES below) - a real deployment change is usually obvious to
-// anyone paying attention within a game or two, so the tool should be at
-// least that responsive, not slower.
+// catch early.
+//
+// The recent window is selectable (see DEPLOYMENT_WINDOWS below), not one
+// fixed size - per explicit feedback, a real deployment bump is worth
+// acting on fast (ideally off a single game), but a single game is also
+// noisier than a few, so this computes every window size up front and
+// lets the viewer pick, same tab pattern as the Skaters page's Last
+// 5/Last 10/Season. Defaults to the fastest (Last Game) given the stated
+// priority: "we want to be very quick with these decisions."
 //
 // Scoped to ice-time signals only (5v5+PP TOI), not linemate identity -
 // NST's public bot API (the same one this app already uses everywhere
@@ -25,6 +30,7 @@
 import type { Position } from "./types";
 import { fetchIndividualStats, currentNstSeason, previousNstSeason, type NstIndividualRow } from "./nst-client";
 import { normalizeName } from "./name-matching";
+import { headshotPositionGroup } from "./headshots";
 
 export interface DeploymentPlayer {
   name: string;
@@ -65,21 +71,28 @@ export interface RankedDeploymentPlayer extends DeploymentPlayer {
   deploymentScore: number;
 }
 
-// How many of a team's most recent games count as "recent" - short on
-// purpose (shrunk from an initial 10, per explicit feedback: a real
-// deployment change is obvious to an attentive fan within a game or two,
-// so a 10-game window was reacting far slower than a human would).
-export const RECENT_GAMES = 3;
+// Selectable "recent window" sizes, in order of how many of a team's most
+// recent games count as "recent" - started as one fixed 10-game window,
+// shrunk to a fixed 3 per feedback (a 10-game window was reacting far
+// slower than an attentive fan would), then made selectable with Last
+// Game added per further feedback (PP-unit bumps especially are worth
+// acting on fast, ideally off a single game - but a single game is also
+// noisier, so Last 3/Last 5 stay available as steadier alternate views).
+export const DEPLOYMENT_WINDOWS = [1, 3, 5] as const;
+export type DeploymentWindow = (typeof DEPLOYMENT_WINDOWS)[number];
+export const DEFAULT_DEPLOYMENT_WINDOW: DeploymentWindow = 1;
 
-// Deliberately just 1, not RECENT_GAMES itself - this tool's whole point
-// is catching a real role change as early as possible, and the window
-// can't contain more than a couple of real games in the season's first
-// week or two anyway (caught live: a flat MIN_RECENT_GP of 3 excluded
-// literally every player on opening week, including McDavid at 2 GP - the
-// same class of early-season sample-size bug already hit twice elsewhere
-// this session). A single game's TOI is noisier than an average over
-// several, but the baseline comparison is what actually filters out noise
-// here, not this floor.
+export type DeploymentBoostsByWindow = Record<DeploymentWindow, RankedDeploymentPlayer[]>;
+
+// Deliberately just 1, not tied to whichever window is selected - this
+// tool's whole point is catching a real role change as early as possible,
+// and a window can't contain more than a couple of real games in the
+// season's first week or two anyway (caught live: a flat MIN_RECENT_GP of
+// 3 excluded literally every player on opening week, including McDavid at
+// 2 GP - the same class of early-season sample-size bug already hit twice
+// elsewhere this session). A single game's TOI is noisier than an average
+// over several, but the baseline comparison is what actually filters out
+// noise here, not this floor.
 // Below this many games LAST season, the baseline itself is too thin to
 // trust (also naturally excludes true rookies with no real prior-season
 // track record, who have nothing to compare against yet) - this one isn't
@@ -92,8 +105,44 @@ function toiPerGame(row: NstIndividualRow | undefined): number {
   return row.toi / row.gp;
 }
 
-function byName(rows: NstIndividualRow[]): Map<string, NstIndividualRow> {
-  return new Map(rows.map((r) => [normalizeName(r.name), r]));
+// Real NHL players can share an exact name (confirmed live: two Sebastian
+// Ahos, and two Elias Petterssons who are even on the same team, one
+// forward one defenseman) - a plain name-keyed Map silently drops one of
+// them at construction (Map keys must be unique, so the later row in the
+// array wins), and whichever player loses ends up looking up the OTHER
+// player's stats everywhere this key is used. Same name+team+position-
+// group disambiguation already used for headshot lookups (headshots.ts),
+// reused here via headshotPositionGroup rather than a third
+// reimplementation of the same idea.
+function playerKey(name: string, team: string, position: string): string {
+  return `${normalizeName(name)}|${team}|${headshotPositionGroup([position])}`;
+}
+
+/** Two-tier lookup, same idea as headshots.ts: the specific name+team+
+ *  position key resolves a collision correctly as long as the player
+ *  hasn't changed teams between the two rows being matched (recent vs.
+ *  baseline/last season) - but a trade WOULD change the recent row's
+ *  team out from under a specific key built against it, so a plain-name
+ *  fallback (first-wins) stays available for the (much more common, and
+ *  not a collision) case of a player who's just been traded since last
+ *  season. */
+function byPlayerKey(rows: NstIndividualRow[]): Map<string, NstIndividualRow> {
+  const map = new Map<string, NstIndividualRow>();
+  for (const r of rows) {
+    map.set(playerKey(r.name, r.team, r.position), r);
+    const fallback = normalizeName(r.name);
+    if (!map.has(fallback)) map.set(fallback, r);
+  }
+  return map;
+}
+
+function lookupPlayer(
+  map: Map<string, NstIndividualRow>,
+  name: string,
+  team: string,
+  position: string
+): NstIndividualRow | undefined {
+  return map.get(playerKey(name, team, position)) ?? map.get(normalizeName(name));
 }
 
 // A power play is skated 5-on-4 (or 5-on-3) the overwhelming majority of
@@ -110,82 +159,101 @@ function byName(rows: NstIndividualRow[]): Map<string, NstIndividualRow> {
 // extra fetch or that risk).
 const SKATERS_ON_ICE_DURING_PP = 5;
 
-/** Approximates each team's true PP TOI (wall-clock, not summed across
- *  players) from the same individual rows already being fetched - the
- *  denominator for "share of the team's PP time." See
- *  SKATERS_ON_ICE_DURING_PP above for why dividing by 5 is accurate, not
- *  a rough guess. */
-function ppToiByTeam(rows: NstIndividualRow[]): Map<string, number> {
+/** Sums every tracked skater's PP TOI per team (not yet divided by 5 -
+ *  see ppShare for why the /5 happens per-player instead, scaled to how
+ *  many games THAT player actually appeared in). */
+function summedPpToiByTeam(rows: NstIndividualRow[]): Map<string, number> {
   const totals = new Map<string, number>();
   for (const r of rows) {
     totals.set(r.team, (totals.get(r.team) ?? 0) + r.toi);
   }
-  for (const [team, total] of totals) {
-    totals.set(team, total / SKATERS_ON_ICE_DURING_PP);
-  }
   return totals;
 }
 
-function ppShare(row: NstIndividualRow | undefined, teamTotals: Map<string, number>): number {
-  if (!row) return 0;
-  const teamTotal = teamTotals.get(row.team) ?? 0;
-  if (teamTotal <= 0) return 0;
-  return row.toi / teamTotal;
+/** Each team's games played in the window, via the highest single
+ *  player's GP seen on that team - same proxy approach used elsewhere in
+ *  this app (e.g. seasonMinToi in player-evaluator-service.ts) rather
+ *  than a separate schedule lookup. */
+function teamGamesByTeam(rows: NstIndividualRow[]): Map<string, number> {
+  const games = new Map<string, number>();
+  for (const r of rows) {
+    if (r.gp > (games.get(r.team) ?? 0)) games.set(r.team, r.gp);
+  }
+  return games;
 }
 
-let cache: { data: RankedDeploymentPlayer[]; expiresAt: number } | null = null;
-const CACHE_TTL_MS = 3 * 60 * 60 * 1000; // 3 hours - same cadence as the other NST-backed tools
+/** This player's share of their team's PP time - but the team total is
+ *  scaled down to just the games THIS player actually appeared in
+ *  (playerGp / team's games), not the team's full window total. Without
+ *  that scaling, a player who missed a chunk of the window (injury,
+ *  trade, healthy scratch) reads as having a much smaller share than
+ *  they really did when active, since the denominator still includes all
+ *  the PP time their replacement racked up while they were out -
+ *  confirmed live with a real case: Matthew Tkachuk played only 31 of
+ *  FLA's 80 games last season (missed significant time to injury, per a
+ *  user report), and came out to a 26% PP share against the unscaled
+ *  full-season denominator vs. a real 67% once scaled to just his own 31
+ *  games - 26% doesn't pass the smell test for a top-pairing PP1 forward,
+ *  67% does. */
+function ppShare(
+  row: NstIndividualRow | undefined,
+  playerGp: number,
+  summedTeamPpToi: Map<string, number>,
+  teamGames: Map<string, number>
+): number {
+  if (!row || playerGp <= 0) return 0;
+  const summedTotal = summedTeamPpToi.get(row.team) ?? 0;
+  const gamesForTeam = teamGames.get(row.team) ?? 0;
+  if (summedTotal <= 0 || gamesForTeam <= 0) return 0;
+  const scaledTeamTotal = (summedTotal * (playerGp / gamesForTeam)) / SKATERS_ON_ICE_DURING_PP;
+  if (scaledTeamTotal <= 0) return 0;
+  return row.toi / scaledTeamTotal;
+}
 
-export async function getDeploymentBoosts(forceRefresh = false): Promise<RankedDeploymentPlayer[]> {
-  if (!forceRefresh && cache && cache.expiresAt > Date.now()) {
-    return cache.data;
-  }
+interface WindowRows {
+  recentToiRows: NstIndividualRow[];
+  recentPpRows: NstIndividualRow[];
+}
 
-  const season = await currentNstSeason();
-  const lastSeason = previousNstSeason(season);
+/** Everything that doesn't depend on which recent window is selected -
+ *  fetched once and reused across all of DEPLOYMENT_WINDOWS. */
+interface BaselineData {
+  baselineToiByName: Map<string, NstIndividualRow>;
+  baselinePpByName: Map<string, NstIndividualRow>;
+  baselinePpTeamTotals: Map<string, number>;
+  baselineTeamGames: Map<string, number>;
+}
 
-  const [recentToiRows, recentPpRows, baselineToiRows, baselinePpRows] = await Promise.all([
-    fetchIndividualStats({
-      fromSeason: season,
-      thruSeason: season,
-      gameRange: { type: "teamGames", games: RECENT_GAMES },
-      situation: "all",
-    }),
-    fetchIndividualStats({
-      fromSeason: season,
-      thruSeason: season,
-      gameRange: { type: "teamGames", games: RECENT_GAMES },
-      situation: "pp",
-    }),
-    fetchIndividualStats({ fromSeason: lastSeason, thruSeason: lastSeason, gameRange: { type: "none" }, situation: "all" }),
-    fetchIndividualStats({ fromSeason: lastSeason, thruSeason: lastSeason, gameRange: { type: "none" }, situation: "pp" }),
-  ]);
-
-  const recentPpByName = byName(recentPpRows);
-  const baselineToiByName = byName(baselineToiRows);
-  const baselinePpByName = byName(baselinePpRows);
-  const recentPpTeamTotals = ppToiByTeam(recentPpRows);
-  const baselinePpTeamTotals = ppToiByTeam(baselinePpRows);
+function computeWindow(
+  { recentToiRows, recentPpRows }: WindowRows,
+  { baselineToiByName, baselinePpByName, baselinePpTeamTotals, baselineTeamGames }: BaselineData
+): RankedDeploymentPlayer[] {
+  const recentPpByName = byPlayerKey(recentPpRows);
+  const recentPpTeamTotals = summedPpToiByTeam(recentPpRows);
+  const recentTeamGames = teamGamesByTeam(recentToiRows);
 
   const players: DeploymentPlayer[] = [];
   for (const recent of recentToiRows) {
     if (recent.gp < MIN_RECENT_GP) continue;
-    const key = normalizeName(recent.name);
-    const baseline = baselineToiByName.get(key);
+    const baseline = lookupPlayer(baselineToiByName, recent.name, recent.team, recent.position);
     if (!baseline || baseline.gp < MIN_BASELINE_GP) continue; // no real last-season track record to compare against
 
     // Missing from the PP report entirely means real 0 PP time, not
     // missing data - a player who went from 0 PP time to getting some is
-    // exactly the kind of boost this tool exists to catch.
-    const recentPp = recentPpByName.get(key);
-    const baselinePp = baselinePpByName.get(key);
+    // exactly the kind of boost this tool exists to catch. Looked up
+    // using each row's OWN team/position (recent's for the recent PP
+    // report, baseline's for the baseline PP report) rather than always
+    // recent's, since a traded player's last-season team can differ from
+    // their current one.
+    const recentPp = lookupPlayer(recentPpByName, recent.name, recent.team, recent.position);
+    const baselinePp = lookupPlayer(baselinePpByName, baseline.name, baseline.team, baseline.position);
 
     const recentToiPerGame = toiPerGame(recent);
     const baselineToiPerGame = toiPerGame(baseline);
     const recentPpToiPerGame = toiPerGame(recentPp);
     const baselinePpToiPerGame = toiPerGame(baselinePp);
-    const recentPpShare = ppShare(recentPp, recentPpTeamTotals);
-    const baselinePpShare = ppShare(baselinePp, baselinePpTeamTotals);
+    const recentPpShare = ppShare(recentPp, recent.gp, recentPpTeamTotals, recentTeamGames);
+    const baselinePpShare = ppShare(baselinePp, baseline.gp, baselinePpTeamTotals, baselineTeamGames);
 
     players.push({
       name: recent.name,
@@ -225,7 +293,57 @@ export async function getDeploymentBoosts(forceRefresh = false): Promise<RankedD
     return { ...p, toiDeltaRank, ppShareDeltaRank, deploymentScore: (toiDeltaRank + ppShareDeltaRank) / 2 };
   });
 
-  const data = ranked.sort((a, b) => a.deploymentScore - b.deploymentScore);
+  return ranked.sort((a, b) => a.deploymentScore - b.deploymentScore);
+}
+
+let cache: { data: DeploymentBoostsByWindow; expiresAt: number } | null = null;
+const CACHE_TTL_MS = 3 * 60 * 60 * 1000; // 3 hours - same cadence as the other NST-backed tools
+
+export async function getDeploymentBoosts(forceRefresh = false): Promise<DeploymentBoostsByWindow> {
+  if (!forceRefresh && cache && cache.expiresAt > Date.now()) {
+    return cache.data;
+  }
+
+  const season = await currentNstSeason();
+  const lastSeason = previousNstSeason(season);
+
+  const windowFetches = DEPLOYMENT_WINDOWS.map(
+    async (games): Promise<[DeploymentWindow, WindowRows]> => {
+      const [recentToiRows, recentPpRows] = await Promise.all([
+        fetchIndividualStats({
+          fromSeason: season,
+          thruSeason: season,
+          gameRange: { type: "teamGames", games },
+          situation: "all",
+        }),
+        fetchIndividualStats({
+          fromSeason: season,
+          thruSeason: season,
+          gameRange: { type: "teamGames", games },
+          situation: "pp",
+        }),
+      ]);
+      return [games, { recentToiRows, recentPpRows }];
+    }
+  );
+
+  const [windowResults, baselineToiRows, baselinePpRows] = await Promise.all([
+    Promise.all(windowFetches),
+    fetchIndividualStats({ fromSeason: lastSeason, thruSeason: lastSeason, gameRange: { type: "none" }, situation: "all" }),
+    fetchIndividualStats({ fromSeason: lastSeason, thruSeason: lastSeason, gameRange: { type: "none" }, situation: "pp" }),
+  ]);
+
+  const baselineData: BaselineData = {
+    baselineToiByName: byPlayerKey(baselineToiRows),
+    baselinePpByName: byPlayerKey(baselinePpRows),
+    baselinePpTeamTotals: summedPpToiByTeam(baselinePpRows),
+    baselineTeamGames: teamGamesByTeam(baselineToiRows),
+  };
+
+  const data = Object.fromEntries(
+    windowResults.map(([games, rows]) => [games, computeWindow(rows, baselineData)])
+  ) as DeploymentBoostsByWindow;
+
   cache = { data, expiresAt: Date.now() + CACHE_TTL_MS };
   return data;
 }

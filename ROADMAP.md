@@ -217,6 +217,66 @@ Players' tab bar.
       `player-evaluator-board.tsx`) into a shared
       `apply-eligibility-overrides.ts` so this tool gets the same
       correct team/position handling Rankings already has.
+      Made the recent window selectable (2026-10-04, Last Game/Last
+      3/Last 5 - `DEPLOYMENT_WINDOWS`) per feedback: PP-unit bumps
+      especially are worth acting on fast, ideally off a single game,
+      defaults to Last Game. Switched PP share's denominator from raw
+      summed player-minutes to an approximation of the team's true wall-
+      clock PP TOI (divide by `SKATERS_ON_ICE_DURING_PP` = 5) per
+      follow-up feedback wanting it to match how a real line-combination
+      report computes "% of team PP time" - verified live,
+      McDavid/Draisaitl/Kucherov all landed in a realistic 65-85% range
+      after the fix (was ~15% before). Then found and fixed a real
+      accuracy bug the same share logic exposed: a player who missed a
+      chunk of the window (injury, trade) was diluted by PP time their
+      replacement racked up while they were out, since the denominator
+      used the team's FULL window total regardless of how many games the
+      player themselves appeared in - caught via a user-reported case
+      (Matthew Tkachuk showing a 26% PP share last season) and confirmed
+      live: he played only 31 of FLA's 80 games (missed significant time
+      to injury), and his share was 26% against the full-season
+      denominator vs. a real 67% once the denominator was scaled down to
+      just his own 31 games (`ppShare` in `deployment-service.ts`).
+      Also found and fixed a related, more serious bug while verifying
+      the above: the internal name-keyed Maps used to join a player's
+      recent/baseline/PP rows together (`byName`) silently dropped one of
+      a real name-collision pair (Sebastian Aho, Elias Pettersson - the
+      same two pairs already handled for headshots) at Map construction,
+      so one of the two real players was computing off the OTHER
+      player's stats entirely, not just getting the wrong team label -
+      caught by noticing both Petterssons showed the identical PP share
+      value to 13 decimal places. Fixed with the same name+team+position-
+      group key scheme as headshots.ts (`playerKey`/`byPlayerKey` in
+      deployment-service.ts), with a plain-name fallback tier so a
+      traded player (team genuinely changed between the recent and
+      baseline window) still resolves correctly. The equivalent React
+      key bug (`key={p.name}` - duplicate keys on a reordering list,
+      which is what actually surfaced this: switching Biggest Boosts/
+      Biggest Drops a few times started showing visibly wrong/duplicated
+      rows) was fixed the same way in `deployment-board.tsx`, plus
+      defensively in `skater-rankings-table.tsx` and
+      `homepage-leaderboard.tsx` (lower risk there since both already
+      split players into forward/defense groups before rendering, which
+      happens to separate both known collision pairs - but not a
+      structural guarantee against some other, currently-unknown,
+      same-position collision).
+      **Known remaining gap, not yet fixed**: `PlayerSearchPicker` (used
+      by Compare's player pickers and the manual/sample roster editor)
+      and the manual roster editor's own matching logic
+      (`roster-editor.tsx`) are name-only all the way through - the
+      search dropdown's selected *value* is a bare name string, not a
+      team/position-qualified identity, and `player-evaluator-board.tsx`
+      already deduplicates its Compare picker list to one entry per name
+      before a collision pair ever reaches the UI, so today only ONE of
+      a real collision pair (e.g. Elias Pettersson) can even be selected
+      for Compare at all - not a display bug, a real "can't do this"
+      gap. Properly fixing it means changing `PlayerSearchPicker`'s
+      value type from a bare name to a team/position-qualified identity
+      and threading that through both consumers (Compare's player1/
+      player2 state, the roster editor's add/remove/already-on-roster
+      checks) - a real, if small, API change to a shared component, not
+      a drop-in key swap like the fixes above, so it's deliberately left
+      for its own pass rather than rushed in here.
 - [x] **Player evaluator + streamer suggester**, merged - live at
       `/skaters`. Full skater pool ranked by C-Score over Last 5 Games /
       Last 10 Games / Season, a built-in player comparison tool, and a

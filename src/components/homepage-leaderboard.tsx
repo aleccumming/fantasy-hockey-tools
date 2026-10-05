@@ -52,7 +52,7 @@ export function HomepageLeaderboard() {
 
       {top5.map((p, i) => (
         <div
-          key={p.name}
+          key={`${p.name}|${p.team}|${p.positions.join(",")}`}
           className={`flex items-center gap-2.5 border-b border-stripe px-4 py-2.5 last:border-0 ${
             i % 2 === 1 ? "bg-stripe/60" : ""
           }`}

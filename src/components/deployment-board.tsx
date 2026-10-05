@@ -9,11 +9,36 @@ import { PlayerHeadshot } from "@/components/player-headshot";
 import { abbreviateFirstName } from "@/components/skater-rankings-table";
 import { TeamMultiSelect } from "@/components/team-multi-select";
 import { NHL_TEAMS } from "@/lib/schedule";
-import { RECENT_GAMES, type RankedDeploymentPlayer } from "@/lib/deployment-service";
+import {
+  DEPLOYMENT_WINDOWS,
+  DEFAULT_DEPLOYMENT_WINDOW,
+  type DeploymentWindow,
+  type RankedDeploymentPlayer,
+} from "@/lib/deployment-service";
 
 type Direction = "boosts" | "drops";
 
 const SORTED_TEAMS = [...NHL_TEAMS].sort((a, b) => a.localeCompare(b));
+
+function windowLabel(games: DeploymentWindow): string {
+  return games === 1 ? "Last Game" : `Last ${games} Games`;
+}
+
+// Real NHL players can share an exact name (confirmed live: two
+// Sebastian Ahos, and two Elias Petterssons - who are even on the SAME
+// team, one forward one defenseman) - unlike Rankings/Compare, this page
+// shows every skater in one unified list rather than splitting by
+// forward/defense, so a collision pair can genuinely both appear here
+// together. Keying rows by name alone gave React two rows sharing a key;
+// React is allowed to assume same-key rows ARE the same row, so
+// reordering the list (switching Biggest Boosts/Biggest Drops, which
+// reverses the array) could pair the wrong row's DOM state to the wrong
+// player's data - exactly the "weird data populating" a user reported
+// after toggling back and forth a few times. Team+position makes the key
+// unique the same way it already disambiguates headshot lookups.
+function rowKey(p: RankedDeploymentPlayer): string {
+  return `${p.name}|${p.team}|${p.positions.join(",")}`;
+}
 
 function formatToi(minutes: number): string {
   const whole = Math.floor(minutes);
@@ -48,12 +73,15 @@ function shareDeltaColor(share: number): string {
 }
 
 export function DeploymentBoard() {
-  const { players, computedAt, error, loading } = useDeploymentBoosts();
+  const { windows, computedAt, error, loading } = useDeploymentBoosts();
   const { byName: yahooEligibilityByName } = useYahooPlayerEligibility();
   const headshots = useHeadshots();
+  const [window_, setWindow] = useState<DeploymentWindow>(DEFAULT_DEPLOYMENT_WINDOW);
   const [direction, setDirection] = useState<Direction>("boosts");
   const [teamFilters, setTeamFilters] = useState<Set<string>>(new Set());
   const [nameQuery, setNameQuery] = useState("");
+
+  const players = windows?.[window_] ?? null;
 
   const corrected = useMemo(
     () => applyEligibilityOverrides(players ?? [], yahooEligibilityByName),
@@ -85,17 +113,33 @@ export function DeploymentBoard() {
   return (
     <div>
       <div className="rounded-md border-l-4 border-rink-blue bg-rink-blue-light px-4 py-2.5 text-sm text-ink">
-        Compares each skater&apos;s Last {RECENT_GAMES} Games ice time against their last-season baseline - production mostly
-        follows opportunity, not the other way around, so a real jump in trusted minutes is often the earliest sign
-        of a breakout, before the points show up. Power play uses each player&apos;s SHARE of their own team&apos;s
-        total PP time, not raw minutes - a team that drew few penalties gives everyone low PP minutes regardless of
-        unit, but a true PP1 player still claims the same large slice of whatever PP time existed. Only ice time is
-        tracked here, not linemate identity specifically - no free source publishes real-time line combinations, but
-        a genuine role change almost always comes with better linemates too.
+        Compares each skater&apos;s recent ice time against their last-season baseline - production mostly follows
+        opportunity, not the other way around, so a real jump in trusted minutes is often the earliest sign of a
+        breakout, before the points show up. Power play uses each player&apos;s SHARE of their own team&apos;s total
+        PP time, not raw minutes - a team that drew few penalties gives everyone low PP minutes regardless of unit,
+        but a true PP1 player still claims the same large slice of whatever PP time existed. Only ice time is tracked
+        here, not linemate identity specifically - no free source publishes real-time line combinations, but a
+        genuine role change almost always comes with better linemates too.
         {computedAt && <> Updated {new Date(computedAt).toLocaleString()}.</>}
       </div>
 
-      <div className="mt-4 flex flex-wrap items-center gap-3">
+      <div className="mt-4 flex gap-1">
+        {DEPLOYMENT_WINDOWS.map((games) => (
+          <button
+            key={games}
+            onClick={() => setWindow(games)}
+            className={`rounded px-2.5 py-1 text-xs font-semibold ${
+              window_ === games
+                ? "bg-rink-blue text-white"
+                : "border border-line bg-surface text-ink-dim hover:border-rink-blue hover:text-rink-blue"
+            }`}
+          >
+            {windowLabel(games)}
+          </button>
+        ))}
+      </div>
+
+      <div className="mt-3 flex flex-wrap items-center gap-3">
         <div className="flex gap-1">
           <button
             onClick={() => setDirection("boosts")}
@@ -145,30 +189,30 @@ export function DeploymentBoard() {
             <tr className="border-b border-line bg-surface text-left text-[11px] font-semibold uppercase tracking-wide text-ink-dim">
               <th className="px-3 py-2">#</th>
               <th className="px-3 py-2">Player</th>
-              <th className="px-2 py-2 text-center">GP (L{RECENT_GAMES})</th>
-              <th className="px-2 py-2 text-center">TOI/gm (L{RECENT_GAMES})</th>
+              <th className="px-2 py-2 text-center">GP ({windowLabel(window_)})</th>
+              <th className="px-2 py-2 text-center">TOI/gm ({windowLabel(window_)})</th>
               <th className="px-2 py-2 text-center">TOI/gm (Last Yr)</th>
               <th
                 className="px-2 py-2 text-center"
-                title={`Last ${RECENT_GAMES} Games TOI/game minus last season's TOI/game`}
+                title={`${windowLabel(window_)} TOI/game minus last season's TOI/game`}
               >
                 &Delta; TOI
               </th>
               <th
                 className="px-2 py-2 text-center"
-                title="This player's approximate share of the team's total power-play ice time"
+                title="This player's approximate share of the team's total power-play ice time, scaled to the games they actually played"
               >
-                PP Share (L{RECENT_GAMES})
+                PP Share ({windowLabel(window_)})
               </th>
               <th
                 className="px-2 py-2 text-center"
-                title="This player's approximate share of the team's total power-play ice time"
+                title="This player's approximate share of the team's total power-play ice time, scaled to the games they actually played"
               >
                 PP Share (Last Yr)
               </th>
               <th
                 className="px-2 py-2 text-center"
-                title={`Last ${RECENT_GAMES} Games PP share minus last season's PP share, in percentage points - the real PP1-vs-PP2 signal, not raw minutes`}
+                title={`${windowLabel(window_)} PP share minus last season's PP share, in percentage points - the real PP1-vs-PP2 signal, not raw minutes`}
               >
                 &Delta; PP Share
               </th>
@@ -176,7 +220,7 @@ export function DeploymentBoard() {
           </thead>
           <tbody>
             {filtered.map((p, i) => (
-              <Row key={p.name} rank={i + 1} player={p} headshots={headshots} />
+              <Row key={rowKey(p)} rank={i + 1} player={p} headshots={headshots} />
             ))}
           </tbody>
         </table>

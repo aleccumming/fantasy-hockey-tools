@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { RankedDeploymentPlayer } from "./deployment-service";
+import type { DeploymentBoostsByWindow } from "./deployment-service";
 
 interface DeploymentBoostsResponse {
-  players: RankedDeploymentPlayer[];
+  windows: DeploymentBoostsByWindow;
   computedAt: string;
 }
 
@@ -34,7 +34,7 @@ export function useDeploymentBoosts() {
   }, []);
 
   return {
-    players: data?.players ?? null,
+    windows: data?.windows ?? null,
     computedAt: data?.computedAt ?? null,
     error,
     loading: !error && !data,
