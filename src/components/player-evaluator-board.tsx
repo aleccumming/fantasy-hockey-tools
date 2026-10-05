@@ -197,7 +197,7 @@ export function PlayerEvaluatorBoard({ activeLeagueKey }: { activeLeagueKey: str
 
           <button
             onClick={() => setDropReplaceOpen(true)}
-            className="mt-4 flex w-full items-center gap-4 rounded-lg bg-gradient-to-br from-rink-blue to-rink-blue-dark px-6 py-4 text-left"
+            className="mt-4 flex w-full flex-col gap-4 rounded-lg bg-gradient-to-br from-rink-blue to-rink-blue-dark px-6 py-4 text-left sm:flex-row sm:items-center"
           >
             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/15">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="2">
@@ -216,7 +216,7 @@ export function PlayerEvaluatorBoard({ activeLeagueKey }: { activeLeagueKey: str
                 playing the most games in your window, then rank them by C-Score.
               </span>
             </span>
-            <span className="shrink-0 rounded-md bg-rink-gold px-5 py-2.5 text-sm font-bold uppercase tracking-wide text-white">
+            <span className="block w-full shrink-0 rounded-md bg-rink-gold px-5 py-2.5 text-center text-sm font-bold uppercase tracking-wide text-white sm:w-auto">
               Find My Streamer &rarr;
             </span>
           </button>
