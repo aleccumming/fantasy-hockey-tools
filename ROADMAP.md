@@ -304,6 +304,10 @@ Players' tab bar.
       checks) - a real, if small, API change to a shared component, not
       a drop-in key swap like the fixes above, so it's deliberately left
       for its own pass rather than rushed in here.
+      Added an All Skaters/Unowned ownership filter toggle (2026-10-05),
+      mirroring the Skaters page's existing pattern exactly - Yahoo real
+      free agents when a league is connected, else the sample/manual
+      roster, via the same `useMyRoster`/`useYahooFreeAgents` hooks.
 - [x] **Player evaluator + streamer suggester**, merged - live at
       `/skaters`. Full skater pool ranked by C-Score over Last 5 Games /
       Last 10 Games / Season, a built-in player comparison tool, and a
