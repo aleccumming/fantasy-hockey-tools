@@ -350,3 +350,55 @@ Players' tab bar.
 
 - [x] Finish landing page UI - shipped: real hero, live tool cards, a real
       top-5 C-Score leaderboard teaser, Coming Soon row.
+
+## Infrastructure
+
+- [x] **Fixed intermittent "takes forever to load" on Deployment/Skaters/
+      Goalies** (2026-10-07). Root-caused with live timing tests against
+      NST's bot API directly: NST's own server takes 6-20s+ the FIRST time
+      it computes a "team games played"-filtered report (confirmed live -
+      a 1-team-game query took 17.3s cold, 0.2-0.5s on repeat), then
+      caches the result internally. These three tools' only defense was an
+      in-memory cache (3hr TTL), which resets on every Vercel cold start -
+      so whoever's request happened to land on a fresh serverless instance
+      paid NST's full slow computation live, independent of the TTL
+      actually expiring. Deployment was the worst hit (6 of its 10
+      parallel NST requests use the slow team-games filter: last 1/2/4
+      games x all-situations/PP).
+      Fix follows the exact pattern already proven for Yahoo player
+      eligibility (yahoo_player_eligibility_cache): a durable DB row
+      (new nst_data_cache table, one row per tool - see nst-data-cache.ts)
+      instead of memory-only, written by a new daily cron
+      (refresh-nst-caches, 10am UTC - an hour after the existing Yahoo
+      eligibility cron) rather than on the request path. No page request
+      calls NST directly anymore, except a one-time bootstrap fallback if
+      a row has genuinely never been seeded. User explicitly confirmed
+      once/twice-a-day freshness is fine here (this isn't live-game data),
+      so a background per-request refresh (e.g. Next's `after()`) wasn't
+      needed - the daily cron alone is the whole fix. Stayed on the Hobby
+      plan (2 cron jobs allowed, both daily-only) rather than upgrading to
+      Pro for more frequent crons, per user's choice.
+      Had to split deployment-types.ts out of deployment-service.ts -
+      deployment-board.tsx (a client component) imports
+      DEPLOYMENT_BASELINES/DEFAULT_DEPLOYMENT_BASELINE as real values, and
+      once deployment-service.ts gained a DB dependency (nst-data-cache.ts
+      -> @/db -> pg), that pulled `pg` (Node-only, needs `util/types` etc.)
+      into the client bundle and broke the build - moving the shared
+      types/constants to their own DB-free file fixed it.
+      **Non-obvious gotcha hit while shipping this**: `drizzle-kit push`
+      silently succeeded against `.env.local`'s DATABASE_URL, which turned
+      out to point at a local Postgres instance (127.0.0.1), not
+      production's Neon database - so the new table existed locally but
+      not in production, and every query against it failed live with a
+      Drizzle error whose `.message` was JUST the generic "Failed query:
+      ..." SQL dump, no actual Postgres error text (that only showed up
+      in `.cause`, which the cron's error handling wasn't surfacing at
+      first - fixed that too, since it's a real diagnostic trap for
+      whatever hits this next). Fixed by running the equivalent `CREATE
+      TABLE IF NOT EXISTS` through a one-time bootstrap API route instead
+      (executes inside the already-correctly-configured deployed app, so
+      it never needed production's connection string locally) - hit once,
+      then deleted. Worth remembering next time a schema change needs to
+      reach production: confirm `.env.local`'s DATABASE_URL is actually
+      pointing at the same database Vercel uses before trusting a local
+      `drizzle-kit push`.
