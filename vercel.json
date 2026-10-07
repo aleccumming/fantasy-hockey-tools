@@ -4,6 +4,10 @@
     {
       "path": "/api/cron/refresh-player-eligibility",
       "schedule": "0 9 * * *"
+    },
+    {
+      "path": "/api/cron/refresh-nst-caches",
+      "schedule": "0 10 * * *"
     }
   ]
 }

@@ -18,6 +18,7 @@
 // way.
 import { fetchGoalieStats, currentNstSeason, type NstGoalieRow } from "./nst-client";
 import { normalizeName } from "./name-matching";
+import { readNstCacheRow, writeNstCacheRow } from "./nst-data-cache";
 
 export interface GoalieStartTracking {
   name: string;
@@ -71,14 +72,31 @@ function shareByName(rows: NstGoalieRow[]): Map<string, number> {
   return shares;
 }
 
-let cache: { data: GoalieStartTracking[]; expiresAt: number } | null = null;
-const CACHE_TTL_MS = 3 * 60 * 60 * 1000; // 3 hours
+// In-memory only for the lifetime of a single warm serverless instance -
+// the real cross-request/cross-cold-start cache is the DB row this reads
+// through to (see nst-data-cache.ts). Freshness is controlled entirely by
+// how often refresh-nst-caches' cron writes that row, not by any TTL here.
+let memoryCache: GoalieStartTracking[] | null = null;
 
-export async function getGoalieStartTracking(forceRefresh = false): Promise<GoalieStartTracking[]> {
-  if (!forceRefresh && cache && cache.expiresAt > Date.now()) {
-    return cache.data;
+/** What every page request calls - never talks to NST directly. Reads the
+ *  DB row the daily cron last wrote; only falls back to a live fetch if
+ *  that row has genuinely never been seeded yet (e.g. right after this
+ *  table was created, before the cron's first run). */
+export async function getGoalieStartTracking(): Promise<GoalieStartTracking[]> {
+  if (memoryCache) return memoryCache;
+
+  const dbData = await readNstCacheRow<GoalieStartTracking[]>("goalieTracking");
+  if (dbData) {
+    memoryCache = dbData;
+    return dbData;
   }
 
+  return refreshGoalieTrackingCache();
+}
+
+/** The real live NST fetch + computation - only the cron (and the one-time
+ *  bootstrap fallback above) should call this directly. */
+export async function refreshGoalieTrackingCache(): Promise<GoalieStartTracking[]> {
   const season = await currentNstSeason();
   const [recentRows, seasonRows] = await Promise.all([
     fetchGoalieStats({
@@ -139,6 +157,7 @@ export async function getGoalieStartTracking(forceRefresh = false): Promise<Goal
     return b.recentShare - a.recentShare;
   });
 
-  cache = { data, expiresAt: Date.now() + CACHE_TTL_MS };
+  memoryCache = data;
+  await writeNstCacheRow("goalieTracking", data);
   return data;
 }

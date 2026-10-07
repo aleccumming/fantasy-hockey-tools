@@ -17,7 +17,7 @@ import {
   DEFAULT_DEPLOYMENT_BASELINE,
   type DeploymentBaseline,
   type RankedDeploymentPlayer,
-} from "@/lib/deployment-service";
+} from "@/lib/deployment-types";
 
 type Direction = "boosts" | "drops";
 type OwnershipFilter = "all" | "unowned";

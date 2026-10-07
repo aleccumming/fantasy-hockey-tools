@@ -96,6 +96,21 @@ export const yahooPlayerEligibilityCache = pgTable("yahoo_player_eligibility_cac
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+// A shared, durable cache for the three Natural Stat Trick-backed tools
+// (Deployment, Skaters/Player Evaluator, Goalie Start Tracking) - one row
+// per tool, `id` discriminating which. Exists for the same reason as
+// yahooPlayerEligibilityCache above, compounded by NST's own server being
+// genuinely slow (6-20s+, confirmed live) the first time it computes a
+// "team games played"-filtered report - an in-memory-only cache meant a
+// cold Vercel instance could make a real visitor wait out that full
+// computation. A daily cron (refresh-nst-caches) is the only thing that
+// writes these rows; every page request just reads one.
+export const nstDataCache = pgTable("nst_data_cache", {
+  id: text("id").primaryKey(), // "deployment" | "playerEvaluator" | "goalieTracking"
+  data: jsonb("data").notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 // App data. One row per draft, owned by a user. `state` mirrors the
 // DraftStoreState shape from src/lib/types.ts as an opaque JSON blob -
 // see the "Accounts + Multi-Draft Foundation" plan for why this isn't

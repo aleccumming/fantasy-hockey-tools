@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { DeploymentBoostsByBaseline } from "./deployment-service";
+import type { DeploymentBoostsByBaseline } from "./deployment-types";
 
 interface DeploymentBoostsResponse {
   baselines: DeploymentBoostsByBaseline;

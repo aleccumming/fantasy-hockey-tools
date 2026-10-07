@@ -29,57 +29,18 @@
 // appeared in a plain unauthenticated fetch, which points to it being
 // gated behind their paid "Frozen Tools" subscription rather than being
 // a scrapeable public page - not pursued further for that reason.)
-import type { Position } from "./types";
 import { fetchIndividualStats, currentNstSeason, previousNstSeason, type NstIndividualRow } from "./nst-client";
 import { buildPlayerIdentityMap, lookupPlayerIdentity } from "./player-identity-key";
+import { readNstCacheRow, writeNstCacheRow } from "./nst-data-cache";
+import type { DeploymentPlayer, RankedDeploymentPlayer, DeploymentBaseline, DeploymentBoostsByBaseline } from "./deployment-types";
 
-export interface DeploymentPlayer {
-  name: string;
-  team: string;
-  positions: Position[];
-  recentGamesPlayed: number;
-  recentToiPerGame: number;
-  recentPpToiPerGame: number;
-  baselineGamesPlayed: number;
-  baselineToiPerGame: number;
-  baselinePpToiPerGame: number;
-  /** recent - baseline, in minutes/game. Positive = more trusted now. */
-  toiDelta: number;
-  /** Raw PP minutes/game delta - shown for context, but NOT what the
-   *  composite score ranks on (see ppShareDelta for why). */
-  ppToiDelta: number;
-  /** This player's share of their OWN TEAM's total PP ice time in the
-   *  window (0-1) - what actually answers "are they on PP1," unlike raw
-   *  PP minutes, which is confounded by how many power plays the team
-   *  even got that window (a team that drew few penalties gives everyone
-   *  low raw PP TOI regardless of unit, while a true PP1 player still
-   *  claims the same large SHARE of whatever PP time existed). Same
-   *  share-of-team-total pattern already used for goalie starts
-   *  (recentShare in goalie-tracking-service.ts). */
-  recentPpShare: number;
-  baselinePpShare: number;
-  /** recentPpShare - baselinePpShare, in share points (e.g. 0.15 = moved
-   *  up 15 percentage points of the team's PP pie) - the real PP1-vs-PP2
-   *  signal, and what the composite score ranks on. */
-  ppShareDelta: number;
-}
-
-export interface RankedDeploymentPlayer extends DeploymentPlayer {
-  toiDeltaRank: number;
-  ppShareDeltaRank: number;
-  /** Average of the two deltas' ranks - lower is a bigger boost, same
-   *  "lower is better" convention as C-Score elsewhere in this app. */
-  deploymentScore: number;
-}
-
-// Selectable baselines to compare the most recent game against - see file
-// header for why "recent" itself isn't selectable (always the most recent
-// game) while the baseline is.
-export const DEPLOYMENT_BASELINES = ["previousGame", "last3Games", "thisSeason", "lastSeason"] as const;
-export type DeploymentBaseline = (typeof DEPLOYMENT_BASELINES)[number];
-export const DEFAULT_DEPLOYMENT_BASELINE: DeploymentBaseline = "lastSeason";
-
-export type DeploymentBoostsByBaseline = Record<DeploymentBaseline, RankedDeploymentPlayer[]>;
+// Re-exported so existing server-side imports from "./deployment-service"
+// (the API route, the cron) keep working - client code should import these
+// from "./deployment-types" directly instead, to avoid pulling this
+// module's DB dependency (nst-data-cache.ts -> @/db -> pg) into the
+// browser bundle.
+export { DEPLOYMENT_BASELINES, DEFAULT_DEPLOYMENT_BASELINE } from "./deployment-types";
+export type { DeploymentPlayer, RankedDeploymentPlayer, DeploymentBaseline, DeploymentBoostsByBaseline } from "./deployment-types";
 
 // The most recent game needs no floor beyond "played in it" - this tool's
 // whole point is catching a role change as early as possible (caught live
@@ -305,14 +266,31 @@ function computeDeployment(
   return ranked.sort((a, b) => a.deploymentScore - b.deploymentScore);
 }
 
-let cache: { data: DeploymentBoostsByBaseline; expiresAt: number } | null = null;
-const CACHE_TTL_MS = 3 * 60 * 60 * 1000; // 3 hours - same cadence as the other NST-backed tools
+// In-memory only for the lifetime of a single warm serverless instance -
+// the real cross-request/cross-cold-start cache is the DB row this reads
+// through to (see nst-data-cache.ts). Freshness is controlled entirely by
+// how often refresh-nst-caches' cron writes that row, not by any TTL here.
+let memoryCache: DeploymentBoostsByBaseline | null = null;
 
-export async function getDeploymentBoosts(forceRefresh = false): Promise<DeploymentBoostsByBaseline> {
-  if (!forceRefresh && cache && cache.expiresAt > Date.now()) {
-    return cache.data;
+/** What every page request calls - never talks to NST directly. Reads the
+ *  DB row the daily cron last wrote; only falls back to a live fetch if
+ *  that row has genuinely never been seeded yet (e.g. right after this
+ *  table was created, before the cron's first run). */
+export async function getDeploymentBoosts(): Promise<DeploymentBoostsByBaseline> {
+  if (memoryCache) return memoryCache;
+
+  const dbData = await readNstCacheRow<DeploymentBoostsByBaseline>("deployment");
+  if (dbData) {
+    memoryCache = dbData;
+    return dbData;
   }
 
+  return refreshDeploymentCache();
+}
+
+/** The real live NST fetch + computation - only the cron (and the one-time
+ *  bootstrap fallback above) should call this directly. */
+export async function refreshDeploymentCache(): Promise<DeploymentBoostsByBaseline> {
   const season = await currentNstSeason();
   const lastSeason = previousNstSeason(season);
 
@@ -364,6 +342,7 @@ export async function getDeploymentBoosts(forceRefresh = false): Promise<Deploym
     lastSeason: computeDeployment(recent, lastSeasonFull, MIN_BASELINE_GP.lastSeason),
   };
 
-  cache = { data, expiresAt: Date.now() + CACHE_TTL_MS };
+  memoryCache = data;
+  await writeNstCacheRow("deployment", data);
   return data;
 }
