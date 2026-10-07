@@ -37,6 +37,11 @@ export async function GET(request: NextRequest) {
     goalieTracking: goalieTracking.status,
     errors: results
       .filter((r): r is PromiseRejectedResult => r.status === "rejected")
-      .map((r) => (r.reason instanceof Error ? r.reason.message : String(r.reason))),
+      .map((r) => {
+        const reason = r.reason;
+        if (!(reason instanceof Error)) return String(reason);
+        const cause = reason.cause instanceof Error ? reason.cause : undefined;
+        return `${reason.name}: ${cause?.message ?? reason.message}${cause ? ` (cause code: ${(cause as { code?: string }).code ?? "?"})` : ""}`;
+      }),
   });
 }
