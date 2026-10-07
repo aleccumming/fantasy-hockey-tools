@@ -308,6 +308,15 @@ Players' tab bar.
       mirroring the Skaters page's existing pattern exactly - Yahoo real
       free agents when a league is connected, else the sample/manual
       roster, via the same `useMyRoster`/`useYahooFreeAgents` hooks.
+      Split into Forwards/Defense tabs and paginated at 50 rows per page
+      (2026-10-07), per feedback that one table of every skater was too much.
+      The split only affects display. `deploymentScore` is still ranked
+      across all skaters together, because a TOI or PP-share change measured
+      against a player's own baseline isn't skewed by F-vs-D differences the
+      way rate stats are. Ranks keep counting across pages, and the page
+      resets to 1 whenever a tab, filter or baseline changes. Also changed
+      the Delta PP Share suffix from "pp" to "%" to match the neighboring
+      share columns.
 - [x] **Player evaluator + streamer suggester**, merged - live at
       `/skaters`. Full skater pool ranked by C-Score over Last 5 Games /
       Last 10 Games / Season, a built-in player comparison tool, and a

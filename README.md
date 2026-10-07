@@ -1,6 +1,20 @@
 # Fantasy Hockey Tools
 
-A set of tools for fantasy hockey managers. Currently live: the **Draft Assistant**.
+A set of tools for fantasy hockey managers. Currently live:
+
+- **Draft Assistant** (`/draft`) - see below.
+- **Skaters** (`/skaters`) - every skater ranked by C-Score over Last 5 / Last 10 /
+  Season / Last Season, split into Forwards and Defense, plus Compare and a Drop &
+  Replace flow for streaming.
+- **Goalies** (`/goalies`) - Start Tracker (each goalie's recent vs. season share
+  of starts) and Spot Starts (ranked by estimated win probability).
+- **Deployment** (`/deployment`) - skaters whose ice time or power-play share in
+  their most recent game jumped or dropped against a chosen baseline. Split into
+  Forwards and Defense tabs, 50 players per page.
+
+Skaters and Deployment can filter to unowned players. With a Yahoo league
+connected they use that league's real free agents; otherwise they use a manual
+roster.
 
 ## Getting Started
 
@@ -112,10 +126,20 @@ in the repo - add or remove them anytime per session.
 
 ## Stack
 
-Next.js (App Router) + TypeScript + Tailwind CSS, Zustand for state (persisted to
-`localStorage`), Papaparse for CSV import. No backend/database — everything runs
-client-side except the NHL schedule fetch (`/api/schedule`), which is a small
-server route with in-memory caching.
+Next.js (App Router) + TypeScript + Tailwind CSS, deployed on Vercel. Zustand for
+Draft Assistant state (persisted to `localStorage`), Papaparse for CSV import.
+
+- **Database:** Postgres via Drizzle ORM (Neon in production). Note that
+  `.env.local`'s `DATABASE_URL` points at a local Postgres, so a local
+  `drizzle-kit push` does not reach production.
+- **Auth:** NextAuth with the Drizzle adapter, plus a separate Yahoo OAuth connect
+  flow for league rosters and free agents.
+- **Data sources:** Natural Stat Trick (skater/goalie stats), the NHL API
+  (schedule, standings), and the Yahoo Fantasy API (leagues, rosters, free agents,
+  position eligibility).
+- **Caching:** two daily Vercel crons (`vercel.json`) refresh DB-backed caches for
+  Yahoo position eligibility and the NST-backed tools, so page loads never wait
+  on a live NST or Yahoo call.
 
 ## Roadmap
 

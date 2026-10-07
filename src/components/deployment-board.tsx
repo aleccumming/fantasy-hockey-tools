@@ -25,12 +25,6 @@ type SkaterGroup = "F" | "D";
 
 const SORTED_TEAMS = [...NHL_TEAMS].sort((a, b) => a.localeCompare(b));
 
-// Same convention as computeCompositeRankingsByGroup (streamer-stats.ts) -
-// every NHL skater is cleanly a D or not, never both, and a single combined
-// table was the thing being complained about here, not the underlying
-// deploymentScore ranking (that stays computed across all skaters together -
-// unlike rate stats, a TOI/PP-share delta from a player's OWN baseline isn't
-// confounded by F-vs-D baselines, so there's no ranking reason to split it).
 const PAGE_SIZE = 50;
 
 const BASELINE_LABELS: Record<DeploymentBaseline, string> = {
@@ -42,10 +36,9 @@ const BASELINE_LABELS: Record<DeploymentBaseline, string> = {
 
 // Real NHL players can share an exact name (confirmed live: two
 // Sebastian Ahos, and two Elias Petterssons - who are even on the SAME
-// team, one forward one defenseman) - unlike Rankings/Compare, this page
-// shows every skater in one unified list rather than splitting by
-// forward/defense, so a collision pair can genuinely both appear here
-// together. Keying rows by name alone gave React two rows sharing a key;
+// team, one forward one defenseman). The F/D tabs happen to separate both
+// known pairs, but nothing guarantees a future same-position collision
+// won't land in one list. Keying rows by name alone gave React two rows sharing a key;
 // React is allowed to assume same-key rows ARE the same row, so
 // reordering the list (switching Biggest Boosts/Biggest Drops, which
 // reverses the array) could pair the wrong row's DOM state to the wrong
@@ -117,6 +110,8 @@ export function DeploymentBoard({ activeLeagueKey }: { activeLeagueKey: string |
     const availableSet = yahooFreeAgents ? new Set(yahooFreeAgents.map((fa) => normalizeName(fa.name))) : null;
     const rosterSet = new Set(roster.map((p) => normalizeName(p.name)));
     const rows = corrected.filter((p) => {
+      // Display split only - deploymentScore stays ranked across all skaters,
+      // since a delta against a player's own baseline isn't skewed by F vs D.
       if (group === "D" ? !p.positions.includes("D") : p.positions.includes("D")) return false;
       if (teamFilters.size > 0 && !teamFilters.has(p.team)) return false;
       if (query && !p.name.toLowerCase().includes(query)) return false;
