@@ -21,8 +21,17 @@ import {
 
 type Direction = "boosts" | "drops";
 type OwnershipFilter = "all" | "unowned";
+type SkaterGroup = "F" | "D";
 
 const SORTED_TEAMS = [...NHL_TEAMS].sort((a, b) => a.localeCompare(b));
+
+// Same convention as computeCompositeRankingsByGroup (streamer-stats.ts) -
+// every NHL skater is cleanly a D or not, never both, and a single combined
+// table was the thing being complained about here, not the underlying
+// deploymentScore ranking (that stays computed across all skaters together -
+// unlike rate stats, a TOI/PP-share delta from a player's OWN baseline isn't
+// confounded by F-vs-D baselines, so there's no ranking reason to split it).
+const PAGE_SIZE = 50;
 
 const BASELINE_LABELS: Record<DeploymentBaseline, string> = {
   previousGame: "Previous Game",
@@ -70,7 +79,7 @@ function formatShare(share: number): string {
 
 function formatShareDelta(share: number): string {
   const sign = share > 0 ? "+" : share < 0 ? "−" : "";
-  return `${sign}${Math.round(Math.abs(share) * 100)}pp`;
+  return `${sign}${Math.round(Math.abs(share) * 100)}%`;
 }
 
 function shareDeltaColor(share: number): string {
@@ -87,9 +96,11 @@ export function DeploymentBoard({ activeLeagueKey }: { activeLeagueKey: string |
   const { freeAgents: yahooFreeAgents } = useYahooFreeAgents(activeLeagueKey);
   const [baseline, setBaseline] = useState<DeploymentBaseline>(DEFAULT_DEPLOYMENT_BASELINE);
   const [direction, setDirection] = useState<Direction>("boosts");
+  const [group, setGroup] = useState<SkaterGroup>("F");
   const [ownershipFilter, setOwnershipFilter] = useState<OwnershipFilter>("all");
   const [teamFilters, setTeamFilters] = useState<Set<string>>(new Set());
   const [nameQuery, setNameQuery] = useState("");
+  const [page, setPage] = useState(1);
 
   const players = baselines?.[baseline] ?? null;
 
@@ -106,6 +117,7 @@ export function DeploymentBoard({ activeLeagueKey }: { activeLeagueKey: string |
     const availableSet = yahooFreeAgents ? new Set(yahooFreeAgents.map((fa) => normalizeName(fa.name))) : null;
     const rosterSet = new Set(roster.map((p) => normalizeName(p.name)));
     const rows = corrected.filter((p) => {
+      if (group === "D" ? !p.positions.includes("D") : p.positions.includes("D")) return false;
       if (teamFilters.size > 0 && !teamFilters.has(p.team)) return false;
       if (query && !p.name.toLowerCase().includes(query)) return false;
       if (ownershipFilter === "unowned") {
@@ -120,7 +132,23 @@ export function DeploymentBoard({ activeLeagueKey }: { activeLeagueKey: string |
     // (a low score = ranks well on both deltas, a high score = ranks
     // poorly on both, i.e. a real decline in trust on both fronts).
     return direction === "boosts" ? rows : [...rows].reverse();
-  }, [corrected, teamFilters, nameQuery, direction, ownershipFilter, roster, yahooFreeAgents]);
+  }, [corrected, group, teamFilters, nameQuery, direction, ownershipFilter, roster, yahooFreeAgents]);
+
+  // Any change that reshuffles which rows qualify (or their order) should
+  // land the viewer back on page 1 - otherwise e.g. switching from Forwards
+  // (many pages) to Defense (fewer) can strand them on a page past the end.
+  // Adjusted during render (React's recommended pattern for this, not an
+  // effect) by comparing against the filter combo last seen.
+  const filterKey = `${baseline}|${direction}|${group}|${ownershipFilter}|${nameQuery}|${[...teamFilters].sort().join(",")}`;
+  const [prevFilterKey, setPrevFilterKey] = useState(filterKey);
+  if (filterKey !== prevFilterKey) {
+    setPrevFilterKey(filterKey);
+    setPage(1);
+  }
+
+  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const clampedPage = Math.min(page, pageCount);
+  const paged = filtered.slice((clampedPage - 1) * PAGE_SIZE, clampedPage * PAGE_SIZE);
 
   if (loading) {
     return <p className="mt-6 text-center text-sm text-ink-dim">Loading live deployment data from Natural Stat Trick...</p>;
@@ -158,6 +186,25 @@ export function DeploymentBoard({ activeLeagueKey }: { activeLeagueKey: string |
             vs. {BASELINE_LABELS[b]}
           </button>
         ))}
+      </div>
+
+      <div className="mt-4 flex gap-1 border-b border-line">
+        <button
+          onClick={() => setGroup("F")}
+          className={`border-b-2 px-4 py-2 text-sm font-semibold ${
+            group === "F" ? "border-rink-blue text-ink" : "border-transparent text-ink-faint hover:text-ink-dim"
+          }`}
+        >
+          Forwards
+        </button>
+        <button
+          onClick={() => setGroup("D")}
+          className={`border-b-2 px-4 py-2 text-sm font-semibold ${
+            group === "D" ? "border-rink-blue text-ink" : "border-transparent text-ink-faint hover:text-ink-dim"
+          }`}
+        >
+          Defense
+        </button>
       </div>
 
       <div className="mt-3 flex flex-wrap items-center gap-3">
@@ -275,14 +322,41 @@ export function DeploymentBoard({ activeLeagueKey }: { activeLeagueKey: string |
             </tr>
           </thead>
           <tbody>
-            {filtered.map((p, i) => (
-              <Row key={rowKey(p)} rank={i + 1} player={p} headshots={headshots} />
+            {paged.map((p, i) => (
+              <Row key={rowKey(p)} rank={(clampedPage - 1) * PAGE_SIZE + i + 1} player={p} headshots={headshots} />
             ))}
           </tbody>
         </table>
       </div>
       {filtered.length === 0 && (
         <p className="mt-4 text-center text-sm text-ink-dim">No players match those filters.</p>
+      )}
+      {filtered.length > 0 && (
+        <div className="mt-3 flex items-center justify-between">
+          <p className="text-xs text-ink-faint">
+            Showing {(clampedPage - 1) * PAGE_SIZE + 1}-{Math.min(clampedPage * PAGE_SIZE, filtered.length)} of{" "}
+            {filtered.length}
+          </p>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={clampedPage <= 1}
+              className="rounded border border-line bg-surface px-2.5 py-1 text-xs font-semibold text-ink-dim hover:border-rink-blue hover:text-rink-blue disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-line disabled:hover:text-ink-dim"
+            >
+              Prev
+            </button>
+            <span className="text-xs text-ink-dim">
+              Page {clampedPage} of {pageCount}
+            </span>
+            <button
+              onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
+              disabled={clampedPage >= pageCount}
+              className="rounded border border-line bg-surface px-2.5 py-1 text-xs font-semibold text-ink-dim hover:border-rink-blue hover:text-rink-blue disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-line disabled:hover:text-ink-dim"
+            >
+              Next
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );
