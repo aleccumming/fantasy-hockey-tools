@@ -152,8 +152,10 @@ export function computeDayLineup(playersPlayingToday: RosterFitPlayer[], slots: 
  *  the true answer (via maximum bipartite matching), not a greedy
  *  approximation. `roster` should already exclude whoever's being dropped
  *  - their slot is exactly what opens up. Evaluates one candidate at a
- *  time, as a standalone what-if - it doesn't jointly optimize multiple
- *  simultaneous adds. */
+ *  time against `roster` as given - to plan several adds together, pass
+ *  the already-staged adds in as part of `roster`, so this candidate is
+ *  only credited with the starts still left over after them (see
+ *  computeMoveSummary for the whole move's joint picture). */
 export function computeFitDays(
   candidateTeam: string,
   candidatePositions: Position[],
@@ -177,4 +179,83 @@ export function computeFitDays(
     );
     return withCandidate > withoutCandidate;
   });
+}
+
+export interface MoveDaySummary {
+  date: string;
+  /** Max starts on this day with the roster as it is today. */
+  startsBefore: number;
+  /** ...after the drops alone. */
+  startsAfterDrops: number;
+  /** ...after the drops AND the adds - the move as a whole. */
+  startsAfter: number;
+  /** Adds who play this day and get a slot. */
+  addsStarting: string[];
+  /** Adds who play this day but don't fit - either no open slot at all, or
+   *  more adds playing than open slots, so only some of them can start. */
+  addsBenched: string[];
+}
+
+export interface MoveSummary {
+  days: MoveDaySummary[];
+  /** Starts the drops cost, across the whole range. */
+  startsLost: number;
+  /** Starts the adds gain on top of the post-drop roster. */
+  startsGained: number;
+  /** startsGained - startsLost: what the whole move is actually worth. */
+  netStarts: number;
+}
+
+/** The joint, day-by-day picture of a whole multi-player move (any number
+ *  of drops + any number of adds), instead of computeFitDays' one-candidate
+ *  -at-a-time view. Two adds who each "fit" 4 days on their own can be
+ *  fighting over the same open slot on some of those days; this counts
+ *  each open slot once.
+ *
+ *  Adds are seated after the post-drop roster in the matching. Kuhn's
+ *  algorithm never unseats an already-matched player (an augmenting path
+ *  can move them to another slot, but they stay seated), so an add only
+ *  gets a slot that's genuinely spare after everyone already on the
+ *  roster. When adds are competing for the same slot, the one listed first
+ *  in `adds` gets it. Which one actually starts is the user's call, so the
+ *  UI shows those days as a conflict rather than presenting the tiebreak as
+ *  a recommendation. */
+export function computeMoveSummary(
+  currentRoster: RosterFitPlayer[],
+  rosterAfterDrops: RosterFitPlayer[],
+  adds: RosterFitPlayer[],
+  days: string[],
+  gameDatesByTeam: Record<string, string[]>,
+  slots: RosterSlotConfig
+): MoveSummary {
+  const slotInstances = expandSlots(slots);
+  const playsOn = (p: RosterFitPlayer, day: string) => (gameDatesByTeam[p.team] ?? []).includes(day);
+
+  const summaries = days.map((date): MoveDaySummary => {
+    const before = currentRoster.filter((p) => playsOn(p, date));
+    const afterDrops = rosterAfterDrops.filter((p) => playsOn(p, date));
+    const addsPlaying = adds.filter((p) => playsOn(p, date));
+
+    const { slotMatchedTo } = computeMatching(
+      [...afterDrops, ...addsPlaying].map((p) => p.positions),
+      slotInstances
+    );
+    const seated = new Set(slotMatchedTo.filter((idx) => idx !== -1));
+    const addsStarting: string[] = [];
+    const addsBenched: string[] = [];
+    addsPlaying.forEach((p, i) => (seated.has(afterDrops.length + i) ? addsStarting : addsBenched).push(p.name));
+
+    return {
+      date,
+      startsBefore: maxMatchedCount(before.map((p) => p.positions), slotInstances),
+      startsAfterDrops: maxMatchedCount(afterDrops.map((p) => p.positions), slotInstances),
+      startsAfter: seated.size,
+      addsStarting,
+      addsBenched,
+    };
+  });
+
+  const startsLost = summaries.reduce((sum, d) => sum + (d.startsBefore - d.startsAfterDrops), 0);
+  const startsGained = summaries.reduce((sum, d) => sum + (d.startsAfter - d.startsAfterDrops), 0);
+  return { days: summaries, startsLost, startsGained, netStarts: startsGained - startsLost };
 }

@@ -3,7 +3,8 @@
 import { useMemo, useState } from "react";
 import { computeCompositeRankingsByGroup } from "@/lib/streamer-stats";
 import { SAMPLE_SKATER_STATS } from "@/lib/streamer-sample-data";
-import { computeFitDays, SAMPLE_ROSTER_SLOTS } from "@/lib/roster-fit";
+import { computeFitDays, computeMoveSummary, SAMPLE_ROSTER_SLOTS, type RosterFitPlayer } from "@/lib/roster-fit";
+import type { RankedSkaterStats } from "@/lib/streamer-stats";
 import { useMyRoster } from "@/lib/use-my-roster";
 import { useYahooRoster } from "@/lib/use-yahoo-roster";
 import { useYahooFreeAgents } from "@/lib/use-yahoo-free-agents";
@@ -12,9 +13,10 @@ import { RosterEditor, type RosterPoolPlayer } from "@/components/roster-editor"
 import type { SkaterPosition } from "@/lib/types";
 import type { PlayerEvaluatorStats } from "@/lib/player-evaluator-service";
 import { useScheduleRange } from "@/lib/use-schedule-range";
-import { currentWeekRange } from "@/lib/schedule";
+import { remainingWeekRange } from "@/lib/schedule";
 import { SkaterRankingsTable, type ExtraColumn } from "@/components/skater-rankings-table";
 import { PlayerHeadshot } from "@/components/player-headshot";
+import { StagedMovePanel } from "@/components/staged-move-panel";
 import type { HeadshotMap } from "@/lib/headshots";
 
 // Drop & Replace always ranks by the last-5-games window - it's a "who do I
@@ -36,6 +38,10 @@ function datesInRange(start: string, end: string): string[] {
 }
 
 const MAX_DAY_BOXES = 7;
+
+function toFitPlayer(p: RankedSkaterStats): RosterFitPlayer {
+  return { name: p.name, team: p.team, positions: p.positions.filter((x): x is SkaterPosition => x !== "G") };
+}
 
 function FitDayIndicator({
   fitDates,
@@ -72,7 +78,9 @@ function FitDayIndicator({
   );
 }
 
-const DEFAULT_RANGE = currentWeekRange();
+// Starts today, not Monday - days already played can't be streamed, so
+// counting them inflated both a candidate's Fits and a drop's "You lose".
+const DEFAULT_RANGE = remainingWeekRange();
 // Stable reference (not a fresh [] literal every render) so useMemo hooks
 // keyed on `roster` don't think it changed every render while it's loading.
 const EMPTY_ROSTER: never[] = [];
@@ -89,6 +97,11 @@ export function DropReplaceFlow({
   onClose: () => void;
 }) {
   const [dropCandidates, setDropCandidates] = useState<Set<string>>(new Set());
+  // Adds being planned together as one move, in the order they were staged.
+  // Kept across Forwards/Defense switches (a move can mix both) and across
+  // drop changes - if a drop change leaves too little room, the panel warns
+  // rather than silently discarding what was staged.
+  const [staged, setStaged] = useState<RankedSkaterStats[]>([]);
   const [groupFilter, setGroupFilter] = useState<"F" | "D">("F");
   const [rangeStart, setRangeStart] = useState(DEFAULT_RANGE.start);
   const [rangeEnd, setRangeEnd] = useState(DEFAULT_RANGE.end);
@@ -140,6 +153,13 @@ export function DropReplaceFlow({
   const hasRoomToAdd = usingYahoo
     ? yahooCapacity !== null && projectedRosterUsage !== null && projectedRosterUsage < yahooCapacity
     : dropCandidates.size > 0;
+  // How many adds the current drops make room for. Manual/sample mode has
+  // no real capacity model, so it's one add per drop there.
+  const maxAdds = usingYahoo
+    ? yahooCapacity !== null && projectedRosterUsage !== null
+      ? Math.max(0, yahooCapacity - projectedRosterUsage)
+      : 0
+    : dropCandidates.size;
   const droppingOnlyIRPlayers =
     usingYahoo &&
     dropCandidates.size > 0 &&
@@ -167,9 +187,17 @@ export function DropReplaceFlow({
     setGamesFilter(null); // re-adopt the dynamic default once the roster changes
   }
 
-  function applyPreset(days: number) {
+  function toggleStaged(p: RankedSkaterStats) {
+    setStaged((prev) => (prev.some((s) => s.name === p.name) ? prev.filter((s) => s.name !== p.name) : [...prev, p]));
+    setGamesFilter(null); // every other candidate's fits just changed
+  }
+
+  // Presets run from today to the end of this matchup week, or 1/3 weeks
+  // past it - always ending on a Sunday so a range lines up with real
+  // Monday-Sunday matchups.
+  function applyPreset(extraWeeks: number) {
     setRangeStart(DEFAULT_RANGE.start);
-    setRangeEnd(addDaysISO(DEFAULT_RANGE.start, days - 1));
+    setRangeEnd(addDaysISO(DEFAULT_RANGE.end, extraWeeks * 7));
   }
 
   function handleRangeStartChange(newStart: string) {
@@ -238,16 +266,29 @@ export function DropReplaceFlow({
     return Array.from(pool.values()).sort((a, b) => a.name.localeCompare(b.name));
   }, [liveWindows]);
 
+  const stagedFit = useMemo(() => staged.map(toFitPlayer), [staged]);
+
   // How many of the selected window's days each candidate could actually be
   // STARTED on your roster - not just how many games their team plays.
+  // Staged adds count as already on the roster, so each candidate is only
+  // credited with starts still open after them - two streamers fighting
+  // over the same slot can't both claim it. (A staged player's own count is
+  // against the OTHER staged adds, i.e. what they add to the rest of the
+  // move.)
   const fitDaysByName = useMemo(() => {
     const map = new Map<string, string[]>();
     const gameDatesByTeam = schedule?.gameDatesByTeam ?? {};
     for (const p of candidates) {
-      map.set(p.name, computeFitDays(p.team, p.positions, rangeDays, gameDatesByTeam, rosterForFit, rosterSlots));
+      const roster = [...rosterForFit, ...stagedFit.filter((s) => s.name !== p.name)];
+      map.set(p.name, computeFitDays(p.team, p.positions, rangeDays, gameDatesByTeam, roster, rosterSlots));
     }
     return map;
-  }, [candidates, rangeDays, schedule, rosterForFit, rosterSlots]);
+  }, [candidates, rangeDays, schedule, rosterForFit, stagedFit, rosterSlots]);
+
+  const moveSummary = useMemo(() => {
+    if (staged.length === 0 || !schedule) return null;
+    return computeMoveSummary(skaterRoster, rosterForFit, stagedFit, rangeDays, schedule.gameDatesByTeam, rosterSlots);
+  }, [staged.length, schedule, skaterRoster, rosterForFit, stagedFit, rangeDays, rosterSlots]);
 
   // The flip side of fitDaysByName - only computed for whichever player(s)
   // are actually selected to drop (not the whole roster at once), and only
@@ -291,13 +332,41 @@ export function DropReplaceFlow({
     [candidates, fitDaysByName, effectiveGamesFilter]
   );
 
-  const scheduleColumn: ExtraColumn = {
-    groupLabel: "Roster Fit",
-    header: "Fits",
-    widthPercent: 11,
-    render: (p) => <FitDayIndicator fitDates={fitDaysByName.get(p.name) ?? []} rangeDays={rangeDays} />,
-    sortValue: (p) => fitDaysByName.get(p.name)?.length ?? 0,
-  };
+  const stagedNames = new Set(staged.map((p) => p.name));
+  const extraColumns: ExtraColumn[] = [
+    {
+      groupLabel: "Roster Fit",
+      header: "Fits",
+      widthPercent: 11,
+      render: (p) => <FitDayIndicator fitDates={fitDaysByName.get(p.name) ?? []} rangeDays={rangeDays} />,
+      sortValue: (p) => fitDaysByName.get(p.name)?.length ?? 0,
+    },
+    {
+      groupLabel: "Plan",
+      header: "Stage",
+      widthPercent: 6,
+      render: (p) => {
+        const isStaged = stagedNames.has(p.name);
+        const full = !isStaged && staged.length >= maxAdds;
+        return (
+          <button
+            onClick={() => toggleStaged(p)}
+            disabled={full}
+            title={full ? `Your drops only make room for ${maxAdds} add${maxAdds === 1 ? "" : "s"}` : undefined}
+            className={`whitespace-nowrap rounded px-2 py-1 text-xs font-semibold ${
+              isStaged
+                ? "bg-rink-blue text-white hover:bg-rink-red"
+                : full
+                  ? "cursor-not-allowed border border-line text-ink-faint opacity-50"
+                  : "border border-rink-blue text-rink-blue hover:bg-rink-blue-light"
+            }`}
+          >
+            {isStaged ? "Staged" : "+ Stage"}
+          </button>
+        );
+      },
+    },
+  ];
 
   const step = hasRoomToAdd ? 2 : 1;
   const addingWithoutDropping = usingYahoo && dropCandidates.size === 0 && hasRoomToAdd;
@@ -435,6 +504,24 @@ export function DropReplaceFlow({
       </div>
       )}
 
+      {staged.length > 0 && (
+        <StagedMovePanel
+          staged={staged}
+          summary={moveSummary}
+          maxAdds={maxAdds}
+          scheduleReady={!scheduleLoading && !scheduleError && Boolean(schedule)}
+          headshots={headshots}
+          onUnstage={(name) => {
+            setStaged((prev) => prev.filter((p) => p.name !== name));
+            setGamesFilter(null);
+          }}
+          onClear={() => {
+            setStaged([]);
+            setGamesFilter(null);
+          }}
+        />
+      )}
+
       {step === 2 && (
         <>
           <div className="mt-6 flex flex-wrap items-center gap-3">
@@ -458,19 +545,19 @@ export function DropReplaceFlow({
             </label>
             <div className="flex gap-1">
               <button
-                onClick={() => applyPreset(7)}
+                onClick={() => applyPreset(0)}
                 className="rounded border border-line bg-surface px-2 py-1 text-xs font-semibold text-ink-dim hover:border-rink-blue hover:text-rink-blue"
               >
                 This week
               </button>
               <button
-                onClick={() => applyPreset(14)}
+                onClick={() => applyPreset(1)}
                 className="rounded border border-line bg-surface px-2 py-1 text-xs font-semibold text-ink-dim hover:border-rink-blue hover:text-rink-blue"
               >
                 Next 2 weeks
               </button>
               <button
-                onClick={() => applyPreset(28)}
+                onClick={() => applyPreset(3)}
                 className="rounded border border-line bg-surface px-2 py-1 text-xs font-semibold text-ink-dim hover:border-rink-blue hover:text-rink-blue"
               >
                 Next 4 weeks
@@ -509,7 +596,10 @@ export function DropReplaceFlow({
                 </button>
               ))}
             </div>
-            <span className="text-xs text-ink-faint">ranked by C-Score ({WINDOW_LABEL})</span>
+            <span className="text-xs text-ink-faint">
+              ranked by C-Score ({WINDOW_LABEL}) &middot; stage up to {maxAdds} add{maxAdds === 1 ? "" : "s"} to plan
+              them together
+            </span>
           </div>
 
           {usingYahoo && yahooFreeAgentsLoading ? (
@@ -527,7 +617,7 @@ export function DropReplaceFlow({
                 ranked={results}
                 headshots={headshots}
                 windowLabel={WINDOW_LABEL}
-                extraColumn={scheduleColumn}
+                extraColumns={extraColumns}
               />
 
               {results.length === 0 && (

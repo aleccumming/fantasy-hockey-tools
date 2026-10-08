@@ -84,8 +84,8 @@ export function luckCellStyle(delta: number): { backgroundColor?: string; color?
   };
 }
 
-/** An optional trailing column (e.g. Drop & Replace's Games-in-range dots) -
- *  omitted entirely for tools that have no notion of a date range. Its
+/** Optional trailing columns (e.g. Drop & Replace's Roster Fit dots and its
+ *  Stage button) - omitted entirely for tools that don't need them. Their
  *  width is reclaimed by the Player column when absent. */
 export interface ExtraColumn {
   groupLabel: string;
@@ -119,7 +119,7 @@ type SortKey =
   | (typeof METRIC_COLUMNS)[number]["key"]
   | LuckKey
   | BangerKey
-  | "extra";
+  | `extra-${number}`;
 
 type SortDir = "asc" | "desc";
 
@@ -133,7 +133,12 @@ function defaultDirFor(key: SortKey): SortDir {
   return "desc";
 }
 
-function sortValue(p: RankedSkaterStats, key: SortKey, extraColumn?: ExtraColumn): number | string {
+function isExtraKey(key: SortKey): key is `extra-${number}` {
+  return key.startsWith("extra-");
+}
+
+function sortValue(p: RankedSkaterStats, key: SortKey, extraColumns: ExtraColumn[]): number | string {
+  if (isExtraKey(key)) return extraColumns[Number(key.slice("extra-".length))]?.sortValue?.(p) ?? 0;
   switch (key) {
     case "name":
       return p.name;
@@ -160,8 +165,6 @@ function sortValue(p: RankedSkaterStats, key: SortKey, extraColumn?: ExtraColumn
     case "blocks":
     case "pim":
       return p[key];
-    case "extra":
-      return extraColumn?.sortValue?.(p) ?? 0;
     default:
       return p.metricRanks[key];
   }
@@ -172,11 +175,14 @@ function SortIndicator({ active, dir }: { active: boolean; dir: SortDir }) {
   return <span className="ml-0.5">{dir === "asc" ? "▲" : "▼"}</span>;
 }
 
+// Stable default so the sort memo doesn't see a fresh [] every render.
+const NO_EXTRA_COLUMNS: ExtraColumn[] = [];
+
 interface TableProps {
   ranked: RankedSkaterStats[];
   headshots: HeadshotMap;
   windowLabel: string;
-  extraColumn?: ExtraColumn;
+  extraColumns?: ExtraColumn[];
   /** Abbreviate first names ("C. McDavid") to keep the Player column
    *  narrow - worth it when that width is needed elsewhere (e.g. a
    *  Schedule column), wasted space when it isn't. Defaults to true. */
@@ -192,11 +198,11 @@ export function SkaterRankingsTable({
   ranked,
   headshots,
   windowLabel,
-  extraColumn,
+  extraColumns = NO_EXTRA_COLUMNS,
   abbreviateNames = true,
   initialSortKey,
 }: TableProps) {
-  const extraWidth = extraColumn?.widthPercent ?? 0;
+  const extraWidth = extraColumns.reduce((sum, c) => sum + c.widthPercent, 0);
   // Floored so a page that also has an extra column (e.g. Drop & Replace's
   // Roster Fit dots) never squeezes Player down to where the name itself
   // gets clipped - percentages here are relative proportions, not a strict
@@ -221,13 +227,13 @@ export function SkaterRankingsTable({
   const sortedRanked = useMemo(() => {
     if (!sortKey) return ranked;
     return [...ranked].sort((a, b) => {
-      const va = sortValue(a, sortKey, extraColumn);
-      const vb = sortValue(b, sortKey, extraColumn);
+      const va = sortValue(a, sortKey, extraColumns);
+      const vb = sortValue(b, sortKey, extraColumns);
       const cmp =
         typeof va === "string" && typeof vb === "string" ? va.localeCompare(vb) : Number(va) - Number(vb);
       return sortDir === "asc" ? cmp : -cmp;
     });
-  }, [ranked, sortKey, sortDir, extraColumn]);
+  }, [ranked, sortKey, sortDir, extraColumns]);
 
   return (
     <div className="mt-3 overflow-x-auto rounded-md border border-line bg-surface">
@@ -250,7 +256,9 @@ export function SkaterRankingsTable({
           {BANGERS_COLUMNS.map((m) => (
             <col key={m.key} style={{ width: "3.5%" }} />
           ))}
-          {extraColumn && <col style={{ width: `${extraColumn.widthPercent}%` }} />}
+          {extraColumns.map((c) => (
+            <col key={c.header} style={{ width: `${c.widthPercent}%` }} />
+          ))}
         </colgroup>
         <thead>
           {/* Both header rows are individually sticky (not the <thead> or
@@ -276,9 +284,11 @@ export function SkaterRankingsTable({
             >
               Banger Stats
             </th>
-            {extraColumn && (
-              <th className="border-l border-stripe px-2 py-1 text-center">{extraColumn.groupLabel}</th>
-            )}
+            {extraColumns.map((c) => (
+              <th key={c.header} className="border-l border-stripe px-2 py-1 text-center">
+                {c.groupLabel}
+              </th>
+            ))}
           </tr>
           <tr className="sticky top-[25px] z-20 border-b border-line bg-surface text-left text-[11px] font-semibold uppercase tracking-wide text-ink-dim [&>th]:sticky [&>th]:top-[25px] [&>th]:bg-surface">
             <th className="px-2 py-2 cursor-pointer select-none hover:text-ink" onClick={() => setSortKey(null)} title="Reset to default (C-Score) order">
@@ -362,17 +372,18 @@ export function SkaterRankingsTable({
                 <SortIndicator active={sortKey === m.key} dir={sortDir} />
               </th>
             ))}
-            {extraColumn && (
+            {extraColumns.map((c, i) => (
               <th
+                key={c.header}
                 className={`border-l border-stripe px-3 py-2 ${
-                  extraColumn.sortValue ? "cursor-pointer select-none hover:text-ink" : ""
+                  c.sortValue ? "cursor-pointer select-none hover:text-ink" : ""
                 }`}
-                onClick={extraColumn.sortValue ? () => handleSort("extra") : undefined}
+                onClick={c.sortValue ? () => handleSort(`extra-${i}`) : undefined}
               >
-                {extraColumn.header}
-                <SortIndicator active={sortKey === "extra"} dir={sortDir} />
+                {c.header}
+                <SortIndicator active={sortKey === `extra-${i}`} dir={sortDir} />
               </th>
-            )}
+            ))}
           </tr>
         </thead>
         <tbody>
@@ -433,9 +444,11 @@ export function SkaterRankingsTable({
                   {p[m.key]}
                 </td>
               ))}
-              {extraColumn && (
-                <td className="border-l border-stripe px-3 py-2">{extraColumn.render(p)}</td>
-              )}
+              {extraColumns.map((c) => (
+                <td key={c.header} className="border-l border-stripe px-3 py-2">
+                  {c.render(p)}
+                </td>
+              ))}
             </tr>
           ))}
         </tbody>

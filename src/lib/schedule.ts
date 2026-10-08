@@ -112,6 +112,19 @@ export function currentWeekRange(referenceDate = new Date()): { start: string; e
   return { start: fmt(monday), end: fmt(sunday) };
 }
 
+/** Today through this week's Sunday - the part of the current matchup week
+ *  that can still be played. Formatted from LOCAL date parts, not
+ *  toISOString (UTC), so an evening visit in North America doesn't roll
+ *  "today" over to tomorrow. */
+export function remainingWeekRange(referenceDate = new Date()): { start: string; end: string } {
+  const day = referenceDate.getDay(); // 0 = Sunday .. 6 = Saturday
+  const sunday = new Date(referenceDate);
+  sunday.setDate(referenceDate.getDate() + (day === 0 ? 0 : 7 - day));
+  const fmt = (d: Date) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  return { start: fmt(referenceDate), end: fmt(sunday) };
+}
+
 /** Every game date (sorted) each team plays within an arbitrary date range -
  *  the basis for "which streamer fits the most games into your roster this
  *  week" (games.length gives the count; the dates themselves let the UI

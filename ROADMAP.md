@@ -322,7 +322,25 @@ Players' tab bar.
       Drop & Replace flow (pick who to drop, see ranked free-agent
       replacements with games-in-range) - currently using a sample roster
       until real Yahoo league data is live (see above).
-- [ ] **Drop & Replace: support planning multiple streamer adds at once.**
+- [x] **Drop & Replace: support planning multiple streamer adds at once.**
+      Shipped (2026-10-08) as a "+ Stage" column in the candidate table and
+      a Staged Adds panel. Staged adds count as already on the roster when
+      every other candidate's Fits is computed, so a second streamer is only
+      credited with starts still open after the first - the double-counting
+      below can't happen. The panel shows the whole move solved jointly
+      (`computeMoveSummary` in `roster-fit.ts`): each staged add's day-by-day
+      starts, days where adds compete for one slot flagged as a conflict
+      ("you pick who starts"), and a net-starts total vs. the current roster
+      with drops and adds counted together. Staging is capped at the room
+      the drops make (open Yahoo roster spots, or one per drop in manual
+      mode). Staged adds survive Forwards/Defense switches and drop changes;
+      going over the cap shows a warning and hides the net total instead of
+      discarding anything. "Suggest the best combo" is still a possible
+      follow-up. Verified against a brute-force lineup solver on 3,000
+      random rosters (0 mismatches). Same day, the date range now defaults
+      to today through Sunday instead of Monday through Sunday - already-
+      played days were inflating Fits, "You lose" and the net total.
+      Presets now end on matchup-week Sundays. Original scoping:
       Today it only evaluates one drop-for-one-add at a time - no way to
       plan "drop 2, add 2 different streamers" for the week in one pass.
       The existing fit-days math (`computeFitDays` in `roster-fit.ts`) is
