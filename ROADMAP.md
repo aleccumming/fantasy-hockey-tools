@@ -351,9 +351,11 @@ Players' tab bar.
       nice follow-up but isn't required for a first pass - honest joint
       accounting plus manual multi-select covers the main ask.
 - [ ] **Trade evaluator / suggester**
-- [ ] **DFS / daily sports betting guide** - surface high-value bets, likely
-      built on top of the player evaluator's underlying metrics once that
-      exists.
+- Dropped (2026-10-07): **DFS / sports betting guide**. Out of scope - this
+      site stays about fantasy hockey only. If it's built, it'll be its own
+      separate app. A started shots-on-goal prop model + walk-forward
+      backtest is saved in git stash ("Scrapped betting guide: ...") rather
+      than committed here.
 
 ## Site
 

@@ -33,10 +33,6 @@ const COMING_SOON_TOOLS = [
     name: "Trade Recommender",
     description: "Evaluate trade offers and find deals that help both sides.",
   },
-  {
-    name: "DFS & Betting Guide",
-    description: "Find value bets and lineups using the same underlying data.",
-  },
 ];
 
 export default function Home() {
