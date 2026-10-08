@@ -40,10 +40,9 @@ item), and "Players" read as if it covered both. `/players` and the old
       already needed normalizing, now handled in `normalizeYahooTeam`.
       The manual roster editor (`use-my-roster.ts`, `roster-editor.tsx`)
       stays as the fallback when no Yahoo league is connected/active.
-      NOT YET tested through a real browser session (only the underlying
-      Yahoo-calling functions were verified directly) - the actual
-      `/api/yahoo/leagues` etc. routes still need a real end-to-end
-      browser test once this is deployed.
+      Confirmed working end-to-end in the deployed app - the user has been
+      using the live Yahoo integration (connect, league switcher, real
+      rosters/free agents) in production for a while.
 - Note: a Google-Sheets-scraping stand-in for the free-agent pool was built
       and then fully reverted the same day once Yahoo access came through -
       no trace of it should remain (`free-agent-sheet.ts`, `use-free-agents.ts`,
