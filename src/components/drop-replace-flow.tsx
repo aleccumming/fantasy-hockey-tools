@@ -9,6 +9,7 @@ import { useMyRoster } from "@/lib/use-my-roster";
 import { useYahooRoster } from "@/lib/use-yahoo-roster";
 import { useYahooFreeAgents } from "@/lib/use-yahoo-free-agents";
 import { normalizeName } from "@/lib/name-matching";
+import { dedupePlayersAcrossSources } from "@/lib/player-identity-key";
 import { RosterEditor, type RosterPoolPlayer } from "@/components/roster-editor";
 import type { SkaterPosition } from "@/lib/types";
 import type { PlayerEvaluatorStats } from "@/lib/player-evaluator-service";
@@ -252,17 +253,13 @@ export function DropReplaceFlow({
 
   // Search pool for the roster editor: everyone in the stat windows.
   const rosterPool = useMemo(() => {
-    const pool = new Map<string, RosterPoolPlayer>();
     const sources = liveWindows ? [liveWindows.season, liveWindows.last10, liveWindows.last5] : [SAMPLE_SKATER_STATS];
-    for (const source of sources) {
-      for (const s of source) {
-        const key = normalizeName(s.name);
-        if (pool.has(key)) continue;
-        const positions = s.positions.filter((x): x is SkaterPosition => x !== "G");
-        if (positions.length > 0) pool.set(key, { name: s.name, team: s.team, positions });
-      }
+    const pool: RosterPoolPlayer[] = [];
+    for (const [id, s] of dedupePlayersAcrossSources(sources, (s) => s.name, (s) => s.positions)) {
+      const positions = s.positions.filter((x): x is SkaterPosition => x !== "G");
+      if (positions.length > 0) pool.push({ id, name: s.name, team: s.team, positions });
     }
-    return Array.from(pool.values()).sort((a, b) => a.name.localeCompare(b.name));
+    return pool.sort((a, b) => a.name.localeCompare(b.name));
   }, [liveWindows]);
 
   const stagedFit = useMemo(() => staged.map(toFitPlayer), [staged]);

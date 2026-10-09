@@ -3,8 +3,12 @@
 import { useState } from "react";
 
 export interface PickablePlayer {
+  /** Collision-safe identity (see playerNameGroupKey) - the picker's value.
+   *  A bare name isn't enough: two real Elias Petterssons both play for VAN. */
+  id: string;
   name: string;
   team: string;
+  positions: string[];
 }
 
 export function PlayerSearchPicker({
@@ -16,19 +20,19 @@ export function PlayerSearchPicker({
   label: string;
   players: PickablePlayer[];
   value: string | null;
-  onChange: (name: string | null) => void;
+  onChange: (id: string | null) => void;
 }) {
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
 
   if (value) {
-    const selected = players.find((p) => p.name === value);
+    const selected = players.find((p) => p.id === value);
     return (
       <div className="flex w-full items-center gap-2 rounded-md border border-line bg-surface px-3 py-2">
         <span className="min-w-0 flex-1 truncate text-sm font-semibold text-ink">
           {selected?.name ?? value}
         </span>
-        {selected && <span className="shrink-0 text-xs text-ink-faint">{selected.team}</span>}
+        {selected && <span className="shrink-0 text-xs text-ink-faint">{playerDetail(selected)}</span>}
         <button
           onClick={() => onChange(null)}
           className="shrink-0 text-xs font-medium text-ink-faint hover:text-rink-red"
@@ -62,22 +66,27 @@ export function PlayerSearchPicker({
         <div className="absolute z-10 mt-1 w-full overflow-hidden rounded-md border border-line bg-surface shadow-md">
           {matches.map((p) => (
             <button
-              key={p.name}
+              key={p.id}
               // onMouseDown (not onClick) so this fires before the input's
               // onBlur closes the dropdown out from under it.
               onMouseDown={() => {
-                onChange(p.name);
+                onChange(p.id);
                 setQuery("");
                 setOpen(false);
               }}
               className="flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-stripe/60"
             >
               <span className="font-medium text-ink">{p.name}</span>
-              <span className="text-xs text-ink-faint">{p.team}</span>
+              <span className="text-xs text-ink-faint">{playerDetail(p)}</span>
             </button>
           ))}
         </div>
       )}
     </div>
   );
+}
+
+// Team alone doesn't tell both VAN Petterssons apart - position does.
+function playerDetail(p: PickablePlayer): string {
+  return p.positions.length > 0 ? `${p.team} · ${p.positions.join("/")}` : p.team;
 }

@@ -3,7 +3,7 @@
 // Suggestions "last 5 games" window and the Player Evaluator's multiple
 // windows (last 5 / last 10 / season).
 import { fetchIndividualStats, fetchOnIceStats, type NstQueryOptions } from "./nst-client";
-import { normalizeName } from "./name-matching";
+import { playerIdentityKey } from "./player-identity-key";
 import type { SkaterPosition } from "./types";
 import type { SkaterRateStats } from "./streamer-stats";
 
@@ -31,17 +31,20 @@ export interface SkaterWindowRow {
 }
 
 /** Fetches one window's individual + on-ice stats and merges them by
- *  normalized name, keyed the same way for easy lookup. Players with no
- *  on-ice match (rare) are dropped - oiCF/oiSCF/oixG can't be computed for
- *  them anyway. */
+ *  playerIdentityKey (name+team+F/D), keyed the same way. Not bare name:
+ *  that silently dropped one of each real collision pair (the forward
+ *  Elias Pettersson and the PIT Sebastian Aho never reached Skaters at
+ *  all). Both reports come from the same query, so team/position agree
+ *  between them. Players with no on-ice match (rare) are dropped -
+ *  oiCF/oiSCF/oixG can't be computed for them anyway. */
 export async function fetchSkaterWindow(opts: NstQueryOptions): Promise<Map<string, SkaterWindowRow>> {
   const [individual, onIce] = await Promise.all([fetchIndividualStats(opts), fetchOnIceStats(opts)]);
-  const onIceByName = new Map(onIce.map((r) => [normalizeName(r.name), r]));
+  const onIceByKey = new Map(onIce.map((r) => [playerIdentityKey(r.name, r.team, [r.position]), r]));
 
   const rows = new Map<string, SkaterWindowRow>();
   for (const ind of individual) {
-    const key = normalizeName(ind.name);
-    const oi = onIceByName.get(key);
+    const key = playerIdentityKey(ind.name, ind.team, [ind.position]);
+    const oi = onIceByKey.get(key);
     if (!oi) continue;
     rows.set(key, {
       name: ind.name,

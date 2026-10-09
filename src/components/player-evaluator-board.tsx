@@ -17,6 +17,7 @@ import { useYahooFreeAgents } from "@/lib/use-yahoo-free-agents";
 import { useYahooPlayerEligibility } from "@/lib/use-yahoo-player-eligibility";
 import { normalizeName } from "@/lib/name-matching";
 import { applyEligibilityOverrides } from "@/lib/apply-eligibility-overrides";
+import { dedupePlayersAcrossSources } from "@/lib/player-identity-key";
 import type { Position } from "@/lib/types";
 
 type PageTab = "rankings" | "compare";
@@ -129,36 +130,42 @@ export function PlayerEvaluatorBoard({ activeLeagueKey }: { activeLeagueKey: str
     return result;
   }, [liveWindows, yahooEligibilityByName]);
 
-  const byNameByWindow = useMemo(() => {
+  // Keyed by playerNameGroupKey, not bare name - a name-keyed Map would
+  // silently keep only one of each real collision pair (Aho, Pettersson).
+  const byIdByWindow = useMemo(() => {
     const result = {} as Record<EvaluatorWindow, Map<string, RankedSkaterStats>>;
     for (const w of ALL_WINDOWS) {
-      const map = new Map<string, RankedSkaterStats>();
-      for (const p of [...rankingsByWindow[w].forwards, ...rankingsByWindow[w].defense]) map.set(p.name, p);
-      result[w] = map;
+      result[w] = dedupePlayersAcrossSources(
+        [[...rankingsByWindow[w].forwards, ...rankingsByWindow[w].defense]],
+        (p) => p.name,
+        (p) => p.positions
+      );
     }
     return result;
   }, [rankingsByWindow]);
 
   const pickablePlayers: PickablePlayer[] = useMemo(() => {
-    const byName = new Map<string, string>();
     // Prefer the season window's team (most likely to be their current
-    // team), falling back to whichever shorter window has them.
-    for (const w of [...ALL_WINDOWS].reverse()) {
-      for (const p of byNameByWindow[w].values()) {
-        if (!byName.has(p.name)) byName.set(p.name, p.team);
-      }
-    }
-    return Array.from(byName, ([name, team]) => ({ name, team })).sort((a, b) => a.name.localeCompare(b.name));
-  }, [byNameByWindow]);
+    // team), then the shorter windows, then last season.
+    const sources = (["season", "last10", "last5", "lastSeason"] as const).map((w) => [...byIdByWindow[w].values()]);
+    const byId = dedupePlayersAcrossSources(sources, (p) => p.name, (p) => p.positions);
+    return Array.from(byId, ([id, p]) => ({ id, name: p.name, team: p.team, positions: p.positions })).sort(
+      (a, b) => a.name.localeCompare(b.name)
+    );
+  }, [byIdByWindow]);
 
-  function buildCompareData(name: string): ComparePlayerData | null {
+  function buildCompareData(id: string): ComparePlayerData | null {
     const windows = {} as ComparePlayerData["windows"];
+    let name = "";
     let team = "";
     let positions: string[] = [];
     for (const w of ALL_WINDOWS) {
-      const stats = byNameByWindow[w].get(name) ?? null;
+      const stats = byIdByWindow[w].get(id) ?? null;
       windows[w] = stats;
-      if (stats) {
+      // First (most recent) window wins, so a traded player shows their
+      // current team.
+      if (stats && !team) {
+        name = stats.name;
         team = stats.team;
         positions = stats.positions;
       }

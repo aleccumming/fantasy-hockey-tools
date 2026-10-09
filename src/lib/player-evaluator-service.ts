@@ -9,7 +9,7 @@
 import type { SkaterRateStats } from "./streamer-stats";
 import { currentNstSeason, baselineSeasonRange, previousNstSeason, seasonRangeSpanning } from "./nst-client";
 import { fetchSkaterWindow, toSkaterRateStats, type SkaterWindowRow } from "./skater-window";
-import { normalizeName } from "./name-matching";
+import { dedupePlayersAcrossSources, playerNameGroupKey } from "./player-identity-key";
 import { readNstCacheRow, writeNstCacheRow } from "./nst-data-cache";
 
 export type EvaluatorWindow = "last5" | "last10" | "season" | "lastSeason";
@@ -74,10 +74,18 @@ function buildStats(
   baselineRows: Map<string, SkaterWindowRow>,
   minToi: number
 ): SkaterRateStats[] {
+  // Name + F/D, not team: the multi-season baseline can list a since-traded
+  // player under a different team, but a collision pair (split on F vs D)
+  // must never pick up each other's baseline.
+  const baselineByNameGroup = dedupePlayersAcrossSources(
+    [[...baselineRows.values()]],
+    (r) => r.name,
+    (r) => [r.position]
+  );
   const stats: SkaterRateStats[] = [];
   for (const row of rows.values()) {
     if (row.toi < minToi) continue;
-    stats.push(toSkaterRateStats(row, baselineRows.get(normalizeName(row.name))));
+    stats.push(toSkaterRateStats(row, baselineByNameGroup.get(playerNameGroupKey(row.name, [row.position]))));
   }
   return stats;
 }

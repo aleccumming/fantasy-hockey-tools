@@ -43,6 +43,35 @@ export function buildPlayerIdentityMap<T>(
   return map;
 }
 
+/** Name + forward/defense group, deliberately without team - stable across
+ *  snapshots taken at different times (stat windows spanning a trade), yet
+ *  still splits both known collision pairs, which differ on F vs D. Used
+ *  where one entry per real player is needed across several snapshots
+ *  (pickers, Compare's per-window lookups). Would merge two same-named
+ *  players in the same group on different teams - no such pair exists
+ *  today. */
+export function playerNameGroupKey(name: string, positions: string[] | undefined): string {
+  return `${normalizeName(name)}|${headshotPositionGroup(positions)}`;
+}
+
+/** One entry per real player across several sources (first source wins),
+ *  keyed by playerNameGroupKey - so a traded player collapses to one entry
+ *  but a real collision pair stays two. */
+export function dedupePlayersAcrossSources<T>(
+  sources: T[][],
+  getName: (item: T) => string,
+  getPositions: (item: T) => string[] | undefined
+): Map<string, T> {
+  const map = new Map<string, T>();
+  for (const source of sources) {
+    for (const item of source) {
+      const key = playerNameGroupKey(getName(item), getPositions(item));
+      if (!map.has(key)) map.set(key, item);
+    }
+  }
+  return map;
+}
+
 /** Tries the specific key first (resolves a collision correctly), falls
  *  back to plain name (resolves a trade correctly, at the cost of
  *  picking arbitrarily - first-wins - in the rare compound case of a
