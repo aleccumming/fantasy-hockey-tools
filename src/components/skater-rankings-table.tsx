@@ -5,14 +5,23 @@ import type { RankedSkaterStats } from "@/lib/streamer-stats";
 import type { HeadshotMap } from "@/lib/headshots";
 import { PlayerHeadshot } from "@/components/player-headshot";
 
-export const METRIC_COLUMNS: { key: keyof RankedSkaterStats["metricRanks"]; label: string; title: string }[] = [
-  { key: "shotsPer60", label: "Shots/60", title: "Shots per 60 minutes" },
-  { key: "iCFPer60", label: "iCF/60", title: "Individual Corsi For per 60" },
-  { key: "iSCFPer60", label: "iSCF/60", title: "Individual Scoring Chances For per 60" },
-  { key: "ixGPer60", label: "ixG/60", title: "Individual Expected Goals per 60" },
-  { key: "oiCFPer60", label: "oiCF/60", title: "On-ice Corsi For per 60" },
-  { key: "oiSCFPer60", label: "oiSCF/60", title: "On-ice Scoring Chances For per 60" },
-  { key: "oixGPer60", label: "oixG/60", title: "On-ice Expected Goals For per 60" },
+/** `shortLabel` drops the "/60" for the rankings table's column headers -
+ *  the group header says "per 60" once instead, which lets these columns be
+ *  much narrower. `label` (with "/60") is still used where there's room,
+ *  e.g. Compare. */
+export const METRIC_COLUMNS: {
+  key: keyof RankedSkaterStats["metricRanks"];
+  label: string;
+  shortLabel: string;
+  title: string;
+}[] = [
+  { key: "shotsPer60", label: "Shots/60", shortLabel: "Shots", title: "Shots per 60 minutes" },
+  { key: "iCFPer60", label: "iCF/60", shortLabel: "iCF", title: "Individual Corsi For per 60" },
+  { key: "iSCFPer60", label: "iSCF/60", shortLabel: "iSCF", title: "Individual Scoring Chances For per 60" },
+  { key: "ixGPer60", label: "ixG/60", shortLabel: "ixG", title: "Individual Expected Goals per 60" },
+  { key: "oiCFPer60", label: "oiCF/60", shortLabel: "oiCF", title: "On-ice Corsi For per 60" },
+  { key: "oiSCFPer60", label: "oiSCF/60", shortLabel: "oiSCF", title: "On-ice Scoring Chances For per 60" },
+  { key: "oixGPer60", label: "oixG/60", shortLabel: "oixG", title: "On-ice Expected Goals For per 60" },
 ];
 
 export function formatToi(minutes: number): string {
@@ -85,26 +94,48 @@ export function luckCellStyle(delta: number): { backgroundColor?: string; color?
 }
 
 /** Optional trailing columns (e.g. Drop & Replace's Roster Fit dots and its
- *  Stage button) - omitted entirely for tools that don't need them. Their
- *  width is reclaimed by the Player column when absent. */
+ *  Stage button) - omitted entirely for tools that don't need them. */
 export interface ExtraColumn {
   groupLabel: string;
   header: string;
-  widthPercent: number;
+  /** Fixed pixel width - wide enough for the column's content. */
+  widthPx: number;
   render: (p: RankedSkaterStats) => React.ReactNode;
   /** Makes the column header clickable to sort by it (e.g. "who has the
    *  most games in range" - the whole point of Drop & Replace). Omit for a
    *  purely informational extra column. */
   sortValue?: (p: RankedSkaterStats) => number;
+  /** Tight, centered padding - for a narrow icon-button column. */
+  compact?: boolean;
+  /** Center the header and cell content (normal padding). */
+  center?: boolean;
 }
 
-// Fixed non-Player column widths (#, C-Score, box score x5, metric ranks
-// x7, luck x3) - team/position moved into the Player cell itself (name with
-// "POS - TEAM" stacked below, a bigger headshot, styled after Yahoo's own
-// player rows) rather than separate columns. Player's width is solved for
-// below so the total always comes out to 100 regardless of whether the
-// extra column is present.
-const FIXED_COLUMNS_PERCENT = 86.1;
+// Each column's MINIMUM width in pixels, measured against the live page
+// (label/value text width + 12px padding - see SortIndicator for why the
+// sort arrow doesn't need room). The table never gets narrower than their
+// sum (it scrolls horizontally instead of squashing text together), and
+// above it every column grows proportionally - see `pct` below. Team/
+// position live inside the Player cell (name with "POS - TEAM" stacked
+// below, styled after Yahoo's own player rows).
+const COL_PX = {
+  rank: 36,
+  cScore: 68,
+  boxScore: 36, // GP / G / A / PTS
+  toi: 52,
+  metric: 46,
+  luck: 56,
+  banger: 38,
+};
+const PLAYER_MIN_PX = 160;
+const FIXED_COLUMNS_PX =
+  COL_PX.rank +
+  COL_PX.cScore +
+  COL_PX.boxScore * 4 +
+  COL_PX.toi +
+  COL_PX.metric * METRIC_COLUMNS.length +
+  COL_PX.luck * LUCK_COLUMNS.length +
+  COL_PX.banger * BANGERS_COLUMNS.length;
 
 type SortKey =
   | "name"
@@ -172,7 +203,11 @@ function sortValue(p: RankedSkaterStats, key: SortKey, extraColumns: ExtraColumn
 
 function SortIndicator({ active, dir }: { active: boolean; dir: SortDir }) {
   if (!active) return null;
-  return <span className="ml-0.5">{dir === "asc" ? "▲" : "▼"}</span>;
+  // Absolutely positioned (at its natural spot, right after the label) so
+  // it takes no layout width - columns are sized to their labels alone and
+  // the arrow sits in the cell padding, instead of every column reserving
+  // room for an arrow only one of them shows at a time.
+  return <span className="absolute ml-px text-[8px]">{dir === "asc" ? "▲" : "▼"}</span>;
 }
 
 // Stable default so the sort memo doesn't see a fresh [] every render.
@@ -202,13 +237,13 @@ export function SkaterRankingsTable({
   abbreviateNames = true,
   initialSortKey,
 }: TableProps) {
-  const extraWidth = extraColumns.reduce((sum, c) => sum + c.widthPercent, 0);
-  // Floored so a page that also has an extra column (e.g. Drop & Replace's
-  // Roster Fit dots) never squeezes Player down to where the name itself
-  // gets clipped - percentages here are relative proportions, not a strict
-  // sum-to-100 requirement, so exceeding 100 when the floor kicks in just
-  // scales every column down slightly rather than overflowing the table.
-  const playerWidth = Math.max(100 - FIXED_COLUMNS_PERCENT - extraWidth, 14);
+  const minTableWidth =
+    FIXED_COLUMNS_PX + PLAYER_MIN_PX + extraColumns.reduce((sum, c) => sum + c.widthPx, 0);
+  // Every column is the same SHARE of the table it would get at minimum
+  // width, so on a wider screen all columns grow together and the spacing
+  // stays even. (Letting only Player absorb the extra left a big empty gap
+  // after the names on wide screens.)
+  const pct = (px: number) => `${(px / minTableWidth) * 100}%`;
 
   const [sortKey, setSortKey] = useState<SortKey | null>(initialSortKey ?? null);
   const [sortDir, setSortDir] = useState<SortDir>(initialSortKey ? defaultDirFor(initialSortKey) : "asc");
@@ -237,27 +272,26 @@ export function SkaterRankingsTable({
 
   return (
     <div className="mt-3 overflow-x-auto rounded-md border border-line bg-surface">
-      <table className="w-full min-w-[1100px] table-fixed text-sm">
+      <table className="w-full table-fixed text-sm" style={{ minWidth: minTableWidth }}>
         <colgroup>
-          <col style={{ width: "3%" }} />
-          <col style={{ width: "6.5%" }} />
-          <col style={{ width: `${playerWidth}%` }} />
-          <col style={{ width: "3.5%" }} />
-          <col style={{ width: "3.5%" }} />
-          <col style={{ width: "3.5%" }} />
-          <col style={{ width: "3.5%" }} />
-          <col style={{ width: "5%" }} />
+          <col style={{ width: pct(COL_PX.rank) }} />
+          <col style={{ width: pct(COL_PX.cScore) }} />
+          <col style={{ width: pct(PLAYER_MIN_PX) }} />
+          {["gp", "g", "a", "pts"].map((k) => (
+            <col key={k} style={{ width: pct(COL_PX.boxScore) }} />
+          ))}
+          <col style={{ width: pct(COL_PX.toi) }} />
           {METRIC_COLUMNS.map((m) => (
-            <col key={m.key} style={{ width: "4.8%" }} />
+            <col key={m.key} style={{ width: pct(COL_PX.metric) }} />
           ))}
           {LUCK_COLUMNS.map((m) => (
-            <col key={m.key} style={{ width: "4.5%" }} />
+            <col key={m.key} style={{ width: pct(COL_PX.luck) }} />
           ))}
           {BANGERS_COLUMNS.map((m) => (
-            <col key={m.key} style={{ width: "3.5%" }} />
+            <col key={m.key} style={{ width: pct(COL_PX.banger) }} />
           ))}
           {extraColumns.map((c) => (
-            <col key={c.header} style={{ width: `${c.widthPercent}%` }} />
+            <col key={c.header} style={{ width: pct(c.widthPx) }} />
           ))}
         </colgroup>
         <thead>
@@ -272,7 +306,7 @@ export function SkaterRankingsTable({
               Box Score
             </th>
             <th colSpan={METRIC_COLUMNS.length} className="border-l border-stripe px-2 py-1 text-center">
-              Underlying Metric Ranks
+              Underlying Metric Ranks (per 60)
             </th>
             <th colSpan={LUCK_COLUMNS.length} className="border-l border-stripe px-2 py-1 text-center">
               Luck / Regression
@@ -291,49 +325,49 @@ export function SkaterRankingsTable({
             ))}
           </tr>
           <tr className="sticky top-[25px] z-20 border-b border-line bg-surface text-left text-[11px] font-semibold uppercase tracking-wide text-ink-dim [&>th]:sticky [&>th]:top-[25px] [&>th]:bg-surface">
-            <th className="px-2 py-2 cursor-pointer select-none hover:text-ink" onClick={() => setSortKey(null)} title="Reset to default (C-Score) order">
+            <th className="px-1.5 py-2 cursor-pointer select-none hover:text-ink" onClick={() => setSortKey(null)} title="Reset to default (C-Score) order">
               #
             </th>
             <th
-              className="cursor-pointer select-none whitespace-nowrap px-2 py-2 hover:text-ink"
+              className="cursor-pointer select-none whitespace-nowrap px-1.5 py-2 hover:text-ink"
               onClick={() => handleSort("compositeRank")}
               title="Composite rank score - average of the 7 metric ranks to the right, lower is better"
             >
               C-Score<SortIndicator active={sortKey === "compositeRank"} dir={sortDir} />
             </th>
-            <th className="cursor-pointer select-none px-3 py-2 hover:text-ink" onClick={() => handleSort("name")}>
+            <th className="cursor-pointer select-none px-2 py-2 hover:text-ink" onClick={() => handleSort("name")}>
               Player<SortIndicator active={sortKey === "name"} dir={sortDir} />
             </th>
             <th
-              className="cursor-pointer select-none border-l border-stripe px-2 py-2 normal-case hover:text-ink"
+              className="cursor-pointer select-none border-l border-stripe px-1.5 py-2 normal-case hover:text-ink"
               onClick={() => handleSort("gamesPlayed")}
               title={`Games played over ${windowLabel}`}
             >
               GP<SortIndicator active={sortKey === "gamesPlayed"} dir={sortDir} />
             </th>
             <th
-              className="cursor-pointer select-none px-2 py-2 normal-case hover:text-ink"
+              className="cursor-pointer select-none px-1.5 py-2 normal-case hover:text-ink"
               onClick={() => handleSort("goals")}
               title={`Goals over ${windowLabel}`}
             >
               G<SortIndicator active={sortKey === "goals"} dir={sortDir} />
             </th>
             <th
-              className="cursor-pointer select-none px-2 py-2 normal-case hover:text-ink"
+              className="cursor-pointer select-none px-1.5 py-2 normal-case hover:text-ink"
               onClick={() => handleSort("assists")}
               title={`Assists over ${windowLabel}`}
             >
               A<SortIndicator active={sortKey === "assists"} dir={sortDir} />
             </th>
             <th
-              className="cursor-pointer select-none px-2 py-2 normal-case hover:text-ink"
+              className="cursor-pointer select-none px-1.5 py-2 normal-case hover:text-ink"
               onClick={() => handleSort("points")}
               title={`Points over ${windowLabel}`}
             >
               PTS<SortIndicator active={sortKey === "points"} dir={sortDir} />
             </th>
             <th
-              className="cursor-pointer select-none px-2 py-2 normal-case hover:text-ink"
+              className="cursor-pointer select-none px-1.5 py-2 normal-case hover:text-ink"
               onClick={() => handleSort("toiPerGame")}
               title="Average time on ice per game"
             >
@@ -342,18 +376,18 @@ export function SkaterRankingsTable({
             {METRIC_COLUMNS.map((m, i) => (
               <th
                 key={m.key}
-                className={`cursor-pointer select-none px-2 py-2 text-center normal-case hover:text-ink ${i === 0 ? "border-l border-stripe" : ""}`}
+                className={`cursor-pointer select-none px-1.5 py-2 text-center normal-case hover:text-ink ${i === 0 ? "border-l border-stripe" : ""}`}
                 onClick={() => handleSort(m.key)}
                 title={m.title}
               >
-                {m.label}
+                {m.shortLabel}
                 <SortIndicator active={sortKey === m.key} dir={sortDir} />
               </th>
             ))}
             {LUCK_COLUMNS.map((m, i) => (
               <th
                 key={m.key}
-                className={`cursor-pointer select-none px-2 py-2 text-center normal-case hover:text-ink ${i === 0 ? "border-l border-stripe" : ""}`}
+                className={`cursor-pointer select-none px-1.5 py-2 text-center normal-case hover:text-ink ${i === 0 ? "border-l border-stripe" : ""}`}
                 onClick={() => handleSort(m.key)}
                 title={m.title}
               >
@@ -364,7 +398,7 @@ export function SkaterRankingsTable({
             {BANGERS_COLUMNS.map((m, i) => (
               <th
                 key={m.key}
-                className={`cursor-pointer select-none px-2 py-2 text-center normal-case hover:text-ink ${i === 0 ? "border-l border-stripe" : ""}`}
+                className={`cursor-pointer select-none px-1.5 py-2 text-center normal-case hover:text-ink ${i === 0 ? "border-l border-stripe" : ""}`}
                 onClick={() => handleSort(m.key)}
                 title={m.title}
               >
@@ -375,7 +409,9 @@ export function SkaterRankingsTable({
             {extraColumns.map((c, i) => (
               <th
                 key={c.header}
-                className={`border-l border-stripe px-3 py-2 ${
+                className={`border-l border-stripe py-2 ${c.compact ? "px-1" : "px-2"} ${
+                  c.compact || c.center ? "text-center" : ""
+                } ${
                   c.sortValue ? "cursor-pointer select-none hover:text-ink" : ""
                 }`}
                 onClick={c.sortValue ? () => handleSort(`extra-${i}`) : undefined}
@@ -392,11 +428,11 @@ export function SkaterRankingsTable({
               key={`${p.name}|${p.team}|${p.positions.join(",")}`}
               className={`border-b border-stripe last:border-0 ${i % 2 === 1 ? "bg-stripe/60" : ""}`}
             >
-              <td className="px-2 py-2 tabular-nums text-ink-dim">{i + 1}</td>
-              <td className="px-2 py-2 tabular-nums font-semibold text-ink">{p.compositeRank.toFixed(1)}</td>
-              <td className="px-3 py-2">
-                <div className="flex items-center gap-2.5">
-                  <PlayerHeadshot name={p.name} team={p.team} positions={p.positions} headshots={headshots} size={38} />
+              <td className="px-1.5 py-2 tabular-nums text-ink-dim">{i + 1}</td>
+              <td className="px-1.5 py-2 tabular-nums font-semibold text-ink">{p.compositeRank.toFixed(1)}</td>
+              <td className="px-2 py-2">
+                <div className="flex items-center gap-2">
+                  <PlayerHeadshot name={p.name} team={p.team} positions={p.positions} headshots={headshots} size={34} />
                   <div className="min-w-0">
                     <div className="truncate font-semibold text-ink" title={p.name}>
                       {abbreviateNames ? abbreviateFirstName(p.name) : p.name}
@@ -407,15 +443,15 @@ export function SkaterRankingsTable({
                   </div>
                 </div>
               </td>
-              <td className="border-l border-stripe px-2 py-2 tabular-nums text-ink-dim">{p.gamesPlayed}</td>
-              <td className="px-2 py-2 tabular-nums text-ink-dim">{p.goals}</td>
-              <td className="px-2 py-2 tabular-nums text-ink-dim">{p.assists}</td>
-              <td className="px-2 py-2 tabular-nums font-semibold text-ink">{p.goals + p.assists}</td>
-              <td className="px-2 py-2 tabular-nums text-ink-dim">{formatToi(p.toiPerGame)}</td>
+              <td className="border-l border-stripe px-1.5 py-2 tabular-nums text-ink-dim">{p.gamesPlayed}</td>
+              <td className="px-1.5 py-2 tabular-nums text-ink-dim">{p.goals}</td>
+              <td className="px-1.5 py-2 tabular-nums text-ink-dim">{p.assists}</td>
+              <td className="px-1.5 py-2 tabular-nums font-semibold text-ink">{p.goals + p.assists}</td>
+              <td className="px-1.5 py-2 tabular-nums text-ink-dim">{formatToi(p.toiPerGame)}</td>
               {METRIC_COLUMNS.map((m, colIdx) => (
                 <td
                   key={m.key}
-                  className={`px-2 py-2 text-center tabular-nums text-ink-dim ${colIdx === 0 ? "border-l border-stripe" : ""}`}
+                  className={`px-1.5 py-2 text-center tabular-nums text-ink-dim ${colIdx === 0 ? "border-l border-stripe" : ""}`}
                 >
                   {p.metricRanks[m.key]}
                 </td>
@@ -428,25 +464,28 @@ export function SkaterRankingsTable({
                 return (
                   <td
                     key={m.key}
-                    className={`whitespace-nowrap px-2 py-2 tabular-nums font-medium text-ink-dim ${colIdx === 0 ? "border-l border-stripe" : ""}`}
+                    className={`whitespace-nowrap px-1.5 py-2 text-center tabular-nums font-medium text-ink-dim ${colIdx === 0 ? "border-l border-stripe" : ""}`}
                     style={luckCellStyle(delta)}
                     title={`Career baseline ${baseline.toFixed(1)}% - ${sign}${delta.toFixed(1)} pts vs ${windowLabel}`}
                   >
-                    {value.toFixed(1)}%
+                    {/* "100.0%" is one character too wide for these columns
+                        and got clipped; IPP hits exactly 100% often in small
+                        samples, and nothing is lost since 100 is the cap. */}
+                    {value >= 100 ? value.toFixed(0) : value.toFixed(1)}%
                   </td>
                 );
               })}
               {BANGERS_COLUMNS.map((m, colIdx) => (
                 <td
                   key={m.key}
-                  className={`px-2 py-2 text-center tabular-nums text-ink-dim ${colIdx === 0 ? "border-l border-stripe" : ""}`}
+                  className={`px-1.5 py-2 text-center tabular-nums text-ink-dim ${colIdx === 0 ? "border-l border-stripe" : ""}`}
                 >
                   {p[m.key]}
                 </td>
               ))}
               {extraColumns.map((c) => (
-                <td key={c.header} className="border-l border-stripe px-3 py-2">
-                  {c.render(p)}
+                <td key={c.header} className={`border-l border-stripe py-2 ${c.compact ? "px-1" : "px-2"}`}>
+                  {c.compact || c.center ? <div className="flex justify-center">{c.render(p)}</div> : c.render(p)}
                 </td>
               ))}
             </tr>

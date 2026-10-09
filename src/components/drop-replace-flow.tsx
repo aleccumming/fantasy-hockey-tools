@@ -46,14 +46,13 @@ function toFitPlayer(p: RankedSkaterStats): RosterFitPlayer {
 function FitDayIndicator({
   fitDates,
   rangeDays,
-  label = "fit",
+  countOnly = false,
 }: {
   fitDates: string[];
   rangeDays: string[];
-  /** Singular noun for the count, e.g. "fit" -> "3 fits" or "start" -> "3
-   *  starts" - same dots-plus-count display serves both the free-agent
-   *  candidate "Fits" column and the roster grid's "games you'd lose". */
-  label?: string;
+  /** Just the number after the dots ("3"), not "3 starts" - for the
+   *  candidate table, whose column header already says "Starts". */
+  countOnly?: boolean;
 }) {
   const fitSet = new Set(fitDates);
   const showDots = rangeDays.length <= MAX_DAY_BOXES;
@@ -71,15 +70,15 @@ function FitDayIndicator({
         </div>
       )}
       <span className="shrink-0 whitespace-nowrap text-xs font-semibold text-ink-dim">
-        {fitDates.length} {label}
-        {fitDates.length === 1 ? "" : "s"}
+        {fitDates.length}
+        {!countOnly && ` start${fitDates.length === 1 ? "" : "s"}`}
       </span>
     </div>
   );
 }
 
 // Starts today, not Monday - days already played can't be streamed, so
-// counting them inflated both a candidate's Fits and a drop's "You lose".
+// counting them inflated both a candidate's Starts and a drop's "You lose".
 const DEFAULT_RANGE = remainingWeekRange();
 // Stable reference (not a fresh [] literal every render) so useMemo hooks
 // keyed on `roster` don't think it changed every render while it's loading.
@@ -132,7 +131,7 @@ export function DropReplaceFlow({
   // play was phantom competition that made the roster look fuller than it
   // really is (confirmed live: a player parked on IR who also plays on a
   // given day was blocking that day's slot in the fit-days matching below,
-  // understating both candidates' "Fits" and a drop candidate's "games
+  // understating both candidates' "Starts" and a drop candidate's "games
   // you'd lose" - a real IR+ player never occupies that slot at all).
   const skaterRoster = useMemo(() => roster.filter((p) => !p.isGoalie && !p.isOnIR), [roster]);
 
@@ -189,7 +188,7 @@ export function DropReplaceFlow({
 
   function toggleStaged(p: RankedSkaterStats) {
     setStaged((prev) => (prev.some((s) => s.name === p.name) ? prev.filter((s) => s.name !== p.name) : [...prev, p]));
-    setGamesFilter(null); // every other candidate's fits just changed
+    setGamesFilter(null); // every other candidate's starts just changed
   }
 
   // Presets run from today to the end of this matchup week, or 1/3 weeks
@@ -336,15 +335,19 @@ export function DropReplaceFlow({
   const extraColumns: ExtraColumn[] = [
     {
       groupLabel: "Roster Fit",
-      header: "Fits",
-      widthPercent: 11,
-      render: (p) => <FitDayIndicator fitDates={fitDaysByName.get(p.name) ?? []} rangeDays={rangeDays} />,
+      header: "Starts",
+      widthPx: 112,
+      center: true,
+      render: (p) => <FitDayIndicator fitDates={fitDaysByName.get(p.name) ?? []} rangeDays={rangeDays} countOnly />,
       sortValue: (p) => fitDaysByName.get(p.name)?.length ?? 0,
     },
     {
-      groupLabel: "Plan",
-      header: "Stage",
-      widthPercent: 6,
+      // Icon-only and narrow on purpose - the table is already wider than
+      // most screens, and a text button here pushed it further.
+      groupLabel: "",
+      header: "Add",
+      widthPx: 36,
+      compact: true,
       render: (p) => {
         const isStaged = stagedNames.has(p.name);
         const full = !isStaged && staged.length >= maxAdds;
@@ -352,8 +355,15 @@ export function DropReplaceFlow({
           <button
             onClick={() => toggleStaged(p)}
             disabled={full}
-            title={full ? `Your drops only make room for ${maxAdds} add${maxAdds === 1 ? "" : "s"}` : undefined}
-            className={`whitespace-nowrap rounded px-2 py-1 text-xs font-semibold ${
+            aria-label={isStaged ? `Unstage ${p.name}` : `Stage ${p.name}`}
+            title={
+              isStaged
+                ? "Staged - click to remove"
+                : full
+                  ? `Your drops only make room for ${maxAdds} add${maxAdds === 1 ? "" : "s"}`
+                  : "Stage this add"
+            }
+            className={`flex h-6 w-6 items-center justify-center rounded-full text-sm font-bold leading-none ${
               isStaged
                 ? "bg-rink-blue text-white hover:bg-rink-red"
                 : full
@@ -361,7 +371,7 @@ export function DropReplaceFlow({
                   : "border border-rink-blue text-rink-blue hover:bg-rink-blue-light"
             }`}
           >
-            {isStaged ? "Staged" : "+ Stage"}
+            {isStaged ? "✓" : "+"}
           </button>
         );
       },
@@ -404,7 +414,7 @@ export function DropReplaceFlow({
         {usingYahoo
           ? `Your roster and free agents come from your connected Yahoo league (${rosterSlots.C}C/${rosterSlots.LW}LW/${rosterSlots.RW}RW/${rosterSlots.D}D/${rosterSlots.UTIL} Util active). `
           : `Treating everyone not on your roster as available - connect a Yahoo league for real free-agent data. Slots are set to ${rosterSlots.C}C/${rosterSlots.LW}LW/${rosterSlots.RW}RW/${rosterSlots.D}D/${rosterSlots.UTIL} Util. `}
-        Days-fit accounts for daily lineup changes (who&apos;s active vs. benched can differ day to
+        Starts account for daily lineup changes (who&apos;s active vs. benched can differ day to
         day). C-Score is live data.
       </div>
 
@@ -487,7 +497,6 @@ export function DropReplaceFlow({
                           <FitDayIndicator
                             fitDates={lostGamesByName.get(p.name) ?? []}
                             rangeDays={rangeDays}
-                            label="start"
                           />
                         </div>
                       )}
@@ -564,18 +573,18 @@ export function DropReplaceFlow({
               </button>
             </div>
             <label className="flex items-center gap-1.5 text-xs font-medium text-ink-dim">
-              Roster fits
+              Starts
               <select
                 value={effectiveGamesFilter}
                 onChange={(e) => setGamesFilter(Number(e.target.value))}
                 className="rounded border border-line bg-surface px-1.5 py-1 text-ink focus:border-rink-blue focus:outline-none"
               >
                 {gamesOptions.length === 0 ? (
-                  <option value={0}>No fits in range</option>
+                  <option value={0}>None in range</option>
                 ) : (
                   gamesOptions.map((count) => (
                     <option key={count} value={count}>
-                      {count} game{count === 1 ? "" : "s"}
+                      {count} start{count === 1 ? "" : "s"}
                     </option>
                   ))
                 )}
@@ -597,8 +606,7 @@ export function DropReplaceFlow({
               ))}
             </div>
             <span className="text-xs text-ink-faint">
-              ranked by C-Score ({WINDOW_LABEL}) &middot; stage up to {maxAdds} add{maxAdds === 1 ? "" : "s"} to plan
-              them together
+              ranked by C-Score ({WINDOW_LABEL}) &middot; room for {maxAdds} add{maxAdds === 1 ? "" : "s"}
             </span>
           </div>
 
@@ -608,7 +616,7 @@ export function DropReplaceFlow({
             <p className="mt-4 text-center text-sm text-ink-dim">Loading the NHL schedule for this range...</p>
           ) : scheduleError ? (
             <p className="mt-4 text-center text-sm text-rink-red">
-              Couldn&apos;t load the schedule ({scheduleError}) - roster fits below aren&apos;t reliable until this
+              Couldn&apos;t load the schedule ({scheduleError}) - starts below aren&apos;t reliable until this
               loads. Try a different date range or refresh.
             </p>
           ) : (
@@ -622,7 +630,7 @@ export function DropReplaceFlow({
 
               {results.length === 0 && (
                 <p className="mt-4 text-center text-sm text-ink-dim">
-                  No free agents fit that many games in your roster this window.
+                  No free agents can start that many games in your lineup in this range.
                 </p>
               )}
             </>
