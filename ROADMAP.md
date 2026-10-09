@@ -378,6 +378,18 @@ Players' tab bar.
 
 - [x] Finish landing page UI - shipped: real hero, live tool cards, a real
       top-5 C-Score leaderboard teaser, Coming Soon row.
+- [x] **Rankings table layout** (2026-10-09). Percentage column widths
+      squashed text together on narrow windows. Columns now have minimum
+      pixel widths measured from real content (`COL_PX` in
+      `skater-rankings-table.tsx`): below their sum the table scrolls, and
+      above it every column grows proportionally so spacing stays even.
+      Fits without scrolling from about 1110px (Skaters) and 1280px
+      (Streamer Finder). Short metric headers ("oiSCF", with "per 60" in the
+      group header), and the sort arrow takes no width. Checked with a
+      script that flags any overflowing cell across pages and widths.
+      Deployment uses the same percentage-width approach, but the audit
+      found no clipping there (it has a 900px minimum and scrolls below it).
+      The Draft board does too and wasn't checked - no local draft to open.
 
 ## Infrastructure
 

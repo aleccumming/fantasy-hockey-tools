@@ -5,7 +5,9 @@ A set of tools for fantasy hockey managers. Currently live:
 - **Draft Assistant** (`/draft`) - see below.
 - **Skaters** (`/skaters`) - every skater ranked by C-Score over Last 5 / Last 10 /
   Season / Last Season, split into Forwards and Defense, plus Compare and a Drop &
-  Replace flow for streaming.
+  Replace flow for streaming. Drop & Replace can stage several adds as one move and
+  shows their combined starts day by day, so two streamers can't both count the
+  same open slot.
 - **Goalies** (`/goalies`) - Start Tracker (each goalie's recent vs. season share
   of starts) and Spot Starts (ranked by estimated win probability).
 - **Deployment** (`/deployment`) - skaters whose ice time or power-play share in
