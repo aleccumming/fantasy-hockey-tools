@@ -286,23 +286,25 @@ Players' tab bar.
       same-position collision - and both run through the same
       `applyEligibilityOverrides` that was the real root cause, so they
       needed the underlying fix regardless of the rendering-level risk).
-      **Known remaining gap, not yet fixed**: `PlayerSearchPicker` (used
-      by Compare's player pickers and the manual/sample roster editor)
-      and the manual roster editor's own matching logic
-      (`roster-editor.tsx`) are name-only all the way through - the
-      search dropdown's selected *value* is a bare name string, not a
-      team/position-qualified identity, and `player-evaluator-board.tsx`
-      already deduplicates its Compare picker list to one entry per name
-      before a collision pair ever reaches the UI, so today only ONE of
-      a real collision pair (e.g. Elias Pettersson) can even be selected
-      for Compare at all - not a display bug, a real "can't do this"
-      gap. Properly fixing it means changing `PlayerSearchPicker`'s
-      value type from a bare name to a team/position-qualified identity
-      and threading that through both consumers (Compare's player1/
-      player2 state, the roster editor's add/remove/already-on-roster
-      checks) - a real, if small, API change to a shared component, not
-      a drop-in key swap like the fixes above, so it's deliberately left
-      for its own pass rather than rushed in here.
+      **Picker gap fixed (2026-10-09).** `PlayerSearchPicker`'s value is
+      now an id (`playerNameGroupKey`: name + F/D, no team, so it holds
+      steady across stat windows that span a trade), and the dropdown shows
+      team and position so the two VAN Petterssons can be told apart.
+      Compare and the manual roster editor both use it (add, already-on-
+      roster and remove checks). The real cause was further upstream:
+      `fetchSkaterWindow` (`skater-window.ts`) merged NST's individual and
+      on-ice reports by bare name, so the forward Elias Pettersson never
+      reached Skaters at all - not in Rankings, Compare, Drop & Replace or
+      the homepage leaderboard. It now merges by `playerIdentityKey`, and
+      the luck/regression baseline is looked up by name + F/D so a traded
+      player still finds theirs. Verified live: both Petterssons rank
+      separately with their own stats and baselines. The PIT Sebastian Aho
+      isn't on any current NHL roster, so Pettersson is the only live
+      collision right now.
+      **Still name-keyed, not yet fixed**: Drop & Replace's own roster grid
+      and candidate maps (drop candidates, staged adds, fit days), and the
+      All/Unowned ownership filters on Skaters and Deployment. All are only
+      wrong if a collision pair sits on the same roster or free-agent list.
       Added an All Skaters/Unowned ownership filter toggle (2026-10-05),
       mirroring the Skaters page's existing pattern exactly - Yahoo real
       free agents when a league is connected, else the sample/manual
