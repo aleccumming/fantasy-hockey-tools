@@ -13,6 +13,11 @@ A set of tools for fantasy hockey managers. Currently live:
 - **Deployment** (`/deployment`) - skaters whose ice time or power-play share in
   their most recent game jumped or dropped against a chosen baseline. Split into
   Forwards and Defense tabs, 50 players per page.
+- **Trade Targets** (`/trades`) - buy-low skaters: strong C-Score but running
+  below their own career S%, oiS% and IPP. With a Yahoo league connected it
+  shows who owns each one, and "Build Offer" ranks your skaters as 1-for-1
+  offers by whether they fill a hole or thin spot in that team's lineup,
+  whether your own lineup stays full, and how close their points per game are.
 
 Skaters and Deployment can filter to unowned players. With a Yahoo league
 connected they use that league's real free agents; otherwise they use a manual

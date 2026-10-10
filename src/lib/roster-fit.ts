@@ -148,6 +148,35 @@ export function computeDayLineup(playersPlayingToday: RosterFitPlayer[], slots: 
   }));
 }
 
+export interface PositionalDepth {
+  /** Starting slots this roster can't fill even with everyone available. */
+  unfilled: RosterPosition[];
+  /** Per position, how many more players eligible there could start if the
+   *  lineup had extra slots of that position - i.e. real backups, after
+   *  multi-position players are shuffled to wherever they're needed most.
+   *  0 means one injury at that position leaves a starting slot empty. */
+  backups: Record<SkaterPosition, number>;
+}
+
+/** Season-level positional picture of a whole roster (no schedule - every
+ *  player treated as available): which starting slots go unfilled, and how
+ *  deep each position is beyond the starters. Same max matching as the
+ *  day-by-day tools, so multi-position eligibility is handled exactly. */
+export function computePositionalDepth(roster: RosterFitPlayer[], slots: RosterSlotConfig): PositionalDepth {
+  const positions = roster.map((p) => p.positions);
+  const lineup = computeDayLineup(roster, slots);
+  const seated = lineup.filter((s) => s.playerName !== null).length;
+  const backups = {} as Record<SkaterPosition, number>;
+  for (const pos of ["C", "LW", "RW", "D"] as SkaterPosition[]) {
+    const widened = expandSlots({ ...slots, [pos]: slots[pos] + roster.length });
+    backups[pos] = maxMatchedCount(positions, widened) - seated;
+  }
+  return {
+    unfilled: lineup.filter((s) => s.playerName === null).map((s) => s.position),
+    backups,
+  };
+}
+
 /** Which of the given days the candidate could actually be started on -
  *  the true answer (via maximum bipartite matching), not a greedy
  *  approximation. `roster` should already exclude whoever's being dropped

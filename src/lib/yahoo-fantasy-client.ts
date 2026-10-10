@@ -221,18 +221,33 @@ export interface YahooRosterPlayer {
   headshotUrl?: string;
 }
 
-/** Which team_key in this league belongs to the connected user - found via
- *  the is_owned_by_current_login flag Yahoo returns per team. */
-export async function getMyTeamKey(leagueKey: string, accessToken: string): Promise<string> {
+export interface YahooLeagueTeam {
+  teamKey: string;
+  name: string;
+  isMine: boolean;
+}
+
+/** Every fantasy team in this league - is_owned_by_current_login marks the
+ *  connected user's own. */
+export async function getLeagueTeams(leagueKey: string, accessToken: string): Promise<YahooLeagueTeam[]> {
   const json = await yahooGet(`/league/${leagueKey}/teams`, accessToken);
   const leagueArr = (json as { fantasy_content: { league: unknown[] } }).fantasy_content.league;
   const teamsResource = leagueArr[1] as { teams: Record<string, unknown> };
-  const teams = collectionValues(teamsResource.teams);
-  for (const t of teams) {
+  return collectionValues(teamsResource.teams).map((t) => {
     const flat = flattenResource((t as { team: unknown }).team);
-    if (flat.is_owned_by_current_login === 1) return String(flat.team_key);
-  }
-  throw new Error(`No team owned by the connected user was found in league ${leagueKey}`);
+    return {
+      teamKey: String(flat.team_key),
+      name: String(flat.name),
+      isMine: flat.is_owned_by_current_login === 1,
+    };
+  });
+}
+
+/** Which team_key in this league belongs to the connected user. */
+export async function getMyTeamKey(leagueKey: string, accessToken: string): Promise<string> {
+  const mine = (await getLeagueTeams(leagueKey, accessToken)).find((t) => t.isMine);
+  if (!mine) throw new Error(`No team owned by the connected user was found in league ${leagueKey}`);
+  return mine.teamKey;
 }
 
 function parsePlayerResource(flat: Record<string, unknown>): YahooRosterPlayer {
@@ -256,14 +271,13 @@ function parsePlayerResource(flat: Record<string, unknown>): YahooRosterPlayer {
   };
 }
 
-/** The connected user's full roster in this league (active + bench + IR
- *  all together - matches this app's existing "no fixed active/reserve
- *  split, the matching decides who starts each day" model). Includes
- *  goalies (isGoalie: true, positions: []) so they're selectable as a drop
- *  candidate - callers doing skater roster-fit math should filter them out
- *  first, since an empty positions array would otherwise look eligible for
- *  the universal UTIL slot. */
-export async function getMyRoster(teamKey: string, accessToken: string): Promise<YahooRosterPlayer[]> {
+/** One team's full roster (active + bench + IR all together - matches this
+ *  app's existing "no fixed active/reserve split, the matching decides who
+ *  starts each day" model). Includes goalies (isGoalie: true, positions:
+ *  []) so they're selectable as a drop candidate - callers doing skater
+ *  roster-fit math should filter them out first, since an empty positions
+ *  array would otherwise look eligible for the universal UTIL slot. */
+export async function getTeamRoster(teamKey: string, accessToken: string): Promise<YahooRosterPlayer[]> {
   const json = await yahooGet(`/team/${teamKey}/roster`, accessToken);
   const teamArr = (json as { fantasy_content: { team: unknown[] } }).fantasy_content.team;
   const rosterResource = teamArr[1] as { roster: { "0": { players: Record<string, unknown> } } };
@@ -271,6 +285,29 @@ export async function getMyRoster(teamKey: string, accessToken: string): Promise
   return players
     .map((p) => parsePlayerResource(flattenResource((p as { player: unknown }).player)))
     .filter((p) => p.isGoalie || p.positions.length > 0);
+}
+
+export interface YahooLeagueTeamRoster extends YahooLeagueTeam {
+  roster: YahooRosterPlayer[];
+}
+
+const leagueRostersCache = new Map<string, { data: YahooLeagueTeamRoster[]; expiresAt: number }>();
+const LEAGUE_ROSTERS_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes - one request per team, worth not repeating
+
+/** Every team's roster in this league. Built from the two already-verified
+ *  shapes (/league/{key}/teams, then /team/{key}/roster per team) rather
+ *  than the single /league/{key}/teams/roster call, whose nesting hasn't
+ *  been checked against a live response. */
+export async function getLeagueRosters(leagueKey: string, accessToken: string): Promise<YahooLeagueTeamRoster[]> {
+  const cached = leagueRostersCache.get(leagueKey);
+  if (cached && cached.expiresAt > Date.now()) return cached.data;
+
+  const teams = await getLeagueTeams(leagueKey, accessToken);
+  const data = await Promise.all(
+    teams.map(async (team) => ({ ...team, roster: await getTeamRoster(team.teamKey, accessToken) }))
+  );
+  leagueRostersCache.set(leagueKey, { data, expiresAt: Date.now() + LEAGUE_ROSTERS_CACHE_TTL_MS });
+  return data;
 }
 
 export interface YahooFreeAgent {

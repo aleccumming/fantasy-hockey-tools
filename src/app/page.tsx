@@ -26,14 +26,15 @@ const LIVE_TOOLS = [
     description:
       "Who's recently gotten meaningfully more (or less) trusted ice time and power-play time than their track record - often the earliest sign of a breakout, before the points show up.",
   },
-];
-
-const COMING_SOON_TOOLS = [
   {
-    name: "Trade Recommender",
-    description: "Evaluate trade offers and find deals that help both sides.",
+    href: "/trades",
+    name: "Trade Targets",
+    description:
+      "Buy-low skaters with strong underlying numbers and bad luck, who owns them in your league, and which of your players fit what that team's roster needs.",
   },
 ];
+
+const COMING_SOON_TOOLS: { name: string; description: string }[] = [];
 
 export default function Home() {
   return (
@@ -75,19 +76,21 @@ export default function Home() {
         <HomepageLeaderboard />
       </div>
 
-      <div className="mt-10">
-        <div className="text-[11px] font-bold uppercase tracking-wide text-ink-faint">
-          Coming Soon
+      {COMING_SOON_TOOLS.length > 0 && (
+        <div className="mt-10">
+          <div className="text-[11px] font-bold uppercase tracking-wide text-ink-faint">
+            Coming Soon
+          </div>
+          <div className="mt-3 grid gap-4 sm:grid-cols-2">
+            {COMING_SOON_TOOLS.map((tool) => (
+              <div key={tool.name} className="rounded-md border border-line bg-ice-2/60 p-4 opacity-75">
+                <h3 className="text-sm font-semibold text-ink">{tool.name}</h3>
+                <p className="mt-1.5 text-xs text-ink-dim">{tool.description}</p>
+              </div>
+            ))}
+          </div>
         </div>
-        <div className="mt-3 grid gap-4 sm:grid-cols-2">
-          {COMING_SOON_TOOLS.map((tool) => (
-            <div key={tool.name} className="rounded-md border border-line bg-ice-2/60 p-4 opacity-75">
-              <h3 className="text-sm font-semibold text-ink">{tool.name}</h3>
-              <p className="mt-1.5 text-xs text-ink-dim">{tool.description}</p>
-            </div>
-          ))}
-        </div>
-      </div>
+      )}
     </main>
   );
 }

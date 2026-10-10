@@ -369,7 +369,37 @@ Players' tab bar.
       position to maximize combined starts across the week) would be a
       nice follow-up but isn't required for a first pass - honest joint
       accounting plus manual multi-select covers the main ask.
-- [ ] **Trade evaluator / suggester**
+- [x] **Trade Targets** (`/trades`, 2026-10-09). Scoped down from a full
+      trade evaluator/suggester (judged too complicated for now) to two
+      things: finding buy-low targets, and picking offers that fit the other
+      team's roster positionally.
+      **Buy-Low score** (`trade-targets.ts`) averages two ranks within the
+      F or D pool: C-Score order (process) and a cold rank from `luckIndex`,
+      the average of S%, oiS% and IPP each RELATIVE to career baseline (raw
+      points would be almost all IPP, which sits ~60-70%). Only running-cold
+      players are listed. A luck metric only counts with a real sample (20+
+      shots for S%, 10+ GP for oiS%/IPP) - without that, every scoreless
+      one-game player read as 0/0/0 and topped the list (caught while
+      testing on opening week). No Last 5 window (can never reach 10 GP);
+      Last Season is included and is the default until Season has 10+ GP
+      players, since last year's points are still what a player is priced on.
+      **Owners** come from every team's roster (`getLeagueRosters`: the
+      verified `/league/{key}/teams` + `/team/{key}/roster` per team, not the
+      unverified single `/teams/roster` call), keyed name+team+F/D with a
+      name+F/D fallback - not plain name, so the Petterssons can't swap owners.
+      Not inferred as "not a free agent": the FA list caps at 500.
+      **Build Offer** uses `computePositionalDepth` (`roster-fit.ts`, same
+      max matching as Drop & Replace): unfilled starting slots, plus backups
+      per position (extra players who could start there if it had more
+      slots). An offer "fills their hole" if it reduces their unfilled slots
+      after losing the target, else "adds depth" at a no-backup position.
+      Also flags if the swap leaves YOUR lineup short. Sorted fit, then
+      your-lineup-safe, then closest P/GP to the target. Season-level only
+      (ignores who plays which night); IR and goalies excluded; 1-for-1 only.
+      **Not yet verified against live Yahoo** (no Yahoo login locally) -
+      tested with mocked rosters. Check the owner column and an offer in prod.
+      Possible follow-ups: sell-high list (your players running hot on weak
+      process), 2-for-1 offers, schedule-aware need.
 - Dropped (2026-10-07): **DFS / sports betting guide**. Out of scope - this
       site stays about fantasy hockey only. If it's built, it'll be its own
       separate app. A started shots-on-goal prop model + walk-forward
