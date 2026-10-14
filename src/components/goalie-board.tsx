@@ -6,6 +6,7 @@ import { useGoalieTracking } from "@/lib/use-goalie-tracking";
 import type { GoalieStartTracking } from "@/lib/goalie-tracking-service";
 import { useHeadshots } from "@/lib/use-headshots";
 import { PlayerHeadshot } from "@/components/player-headshot";
+import { StatsRefresh } from "@/components/stats-refresh";
 import { currentWeekRange } from "@/lib/schedule";
 
 type GoalieTab = "spot" | "tracker";
@@ -269,6 +270,23 @@ function StartTrackerTable() {
 
 export function GoalieBoard() {
   const [tab, setTab] = useState<GoalieTab>("spot");
+  // Both tabs fetch their own data inside the table components, so after a
+  // refresh they're remounted (new key) to refetch; this hook instance just
+  // supplies the "Updated ..." time.
+  const { computedAt, reload } = useGoalieTracking();
+  const [refreshKey, setRefreshKey] = useState(0);
+  const refreshControl = (
+    <div className="mt-1.5">
+      <StatsRefresh
+        dataset="goalieTracking"
+        computedAt={computedAt}
+        onRefreshed={() => {
+          reload();
+          setRefreshKey((k) => k + 1);
+        }}
+      />
+    </div>
+  );
 
   return (
     <div>
@@ -279,6 +297,7 @@ export function GoalieBoard() {
           log5 method - not a goal-differential proxy. &quot;Presumed starter&quot; isn&apos;t a
           confirmed lineup though - nobody publishes that for free, so a back-to-back or surprise
           rest day can differ from the projection.
+          {refreshControl}
         </div>
       ) : (
         <div className="rounded-md border-l-4 border-rink-blue bg-rink-blue-light px-4 py-2.5 text-sm text-ink">
@@ -286,6 +305,7 @@ export function GoalieBoard() {
           over each team&apos;s last {" "}
           {RECENT_WINDOW_LABEL} - the closest real signal available without a per-game start log,
           so a relief appearance can very occasionally inflate a share slightly.
+          {refreshControl}
         </div>
       )}
 
@@ -314,7 +334,7 @@ export function GoalieBoard() {
             Ranked by estimated win probability - usually the single biggest chunk of a goalie&apos;s
             fantasy points on a given start.
           </p>
-          <SpotStartsTable />
+          <SpotStartsTable key={refreshKey} />
         </>
       ) : (
         <>
@@ -323,7 +343,7 @@ export function GoalieBoard() {
             recent starts vs. their season-long share, with a &quot;Taking Over&quot; flag when a
             backup&apos;s share has jumped enough to suggest they&apos;re claiming the net.
           </p>
-          <StartTrackerTable />
+          <StartTrackerTable key={refreshKey} />
         </>
       )}
     </div>

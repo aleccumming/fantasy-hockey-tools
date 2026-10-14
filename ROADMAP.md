@@ -419,6 +419,24 @@ Players' tab bar.
       (Streamer Finder). Short metric headers ("oiSCF", with "per 60" in the
       group header), and the sort arrow takes no width. Checked with a
       script that flags any overflowing cell across pages and widths.
+- [x] **Refresh button for stats** (2026-10-14). Skaters, Trades,
+      Deployment and Goalies banners show "Updated 3 hrs ago" plus a Refresh
+      button (`stats-refresh.tsx`) that pulls that one dataset from NST now
+      via `POST /api/refresh-stats` - signed-in only, and a no-op if it was
+      refreshed in the last 10 minutes (by anyone, incl. the cron), so it
+      can't hammer NST. Fixed two real bugs underneath: every stats route
+      sent `computedAt: new Date()`, so the banner always claimed "updated
+      just now" (local data was really 5 days old); and each service's
+      in-memory cache never expired, so a fresh DB row never reached an
+      already-warm instance. `getNstCached` (`nst-data-cache.ts`) now checks
+      the row's `updatedAt` on each read and reloads when it's newer. Spot
+      Starts' own 1-hour cache also rebuilds when goalie tracking changes.
+      Third bug: NST fetches used Next's `revalidate: 3600` data cache, so a
+      Refresh could quietly return hour-old reports; now `no-store` (only
+      the cron/Refresh/bootstrap call NST anyway). Measured: all three
+      datasets refresh in ~2s. Auto-refresh after games finish (polling
+      NHL scores via GitHub Actions, since Vercel Hobby crons are daily-only)
+      was considered and dropped - the button is fast enough.
       Deployment uses the same percentage-width approach, but the audit
       found no clipping there (it has a 900px minimum and scrolls below it).
       The Draft board does too and wasn't checked - no local draft to open.

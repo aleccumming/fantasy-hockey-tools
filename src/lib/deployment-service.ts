@@ -31,7 +31,7 @@
 // a scrapeable public page - not pursued further for that reason.)
 import { fetchIndividualStats, currentNstSeason, previousNstSeason, type NstIndividualRow } from "./nst-client";
 import { buildPlayerIdentityMap, lookupPlayerIdentity } from "./player-identity-key";
-import { readNstCacheRow, writeNstCacheRow } from "./nst-data-cache";
+import { getNstCached, saveNstCached, type NstCached } from "./nst-data-cache";
 import type { DeploymentPlayer, RankedDeploymentPlayer, DeploymentBaseline, DeploymentBoostsByBaseline } from "./deployment-types";
 
 // Re-exported so existing server-side imports from "./deployment-service"
@@ -266,31 +266,16 @@ function computeDeployment(
   return ranked.sort((a, b) => a.deploymentScore - b.deploymentScore);
 }
 
-// In-memory only for the lifetime of a single warm serverless instance -
-// the real cross-request/cross-cold-start cache is the DB row this reads
-// through to (see nst-data-cache.ts). Freshness is controlled entirely by
-// how often refresh-nst-caches' cron writes that row, not by any TTL here.
-let memoryCache: DeploymentBoostsByBaseline | null = null;
-
 /** What every page request calls - never talks to NST directly. Reads the
- *  DB row the daily cron last wrote; only falls back to a live fetch if
- *  that row has genuinely never been seeded yet (e.g. right after this
- *  table was created, before the cron's first run). */
-export async function getDeploymentBoosts(): Promise<DeploymentBoostsByBaseline> {
-  if (memoryCache) return memoryCache;
-
-  const dbData = await readNstCacheRow<DeploymentBoostsByBaseline>("deployment");
-  if (dbData) {
-    memoryCache = dbData;
-    return dbData;
-  }
-
-  return refreshDeploymentCache();
+ *  DB row the daily cron (or the Refresh button) last wrote; only falls
+ *  back to a live fetch if that row has genuinely never been seeded yet. */
+export async function getDeploymentBoosts(): Promise<NstCached<DeploymentBoostsByBaseline>> {
+  return getNstCached("deployment", refreshDeploymentCache);
 }
 
-/** The real live NST fetch + computation - only the cron (and the one-time
- *  bootstrap fallback above) should call this directly. */
-export async function refreshDeploymentCache(): Promise<DeploymentBoostsByBaseline> {
+/** The real live NST fetch + computation - only the cron, the Refresh button
+ *  (/api/refresh-stats) and the bootstrap fallback above call this. */
+export async function refreshDeploymentCache(): Promise<NstCached<DeploymentBoostsByBaseline>> {
   const season = await currentNstSeason();
   const lastSeason = previousNstSeason(season);
 
@@ -342,7 +327,5 @@ export async function refreshDeploymentCache(): Promise<DeploymentBoostsByBaseli
     lastSeason: computeDeployment(recent, lastSeasonFull, MIN_BASELINE_GP.lastSeason),
   };
 
-  memoryCache = data;
-  await writeNstCacheRow("deployment", data);
-  return data;
+  return saveNstCached("deployment", data);
 }

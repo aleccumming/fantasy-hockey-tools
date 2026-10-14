@@ -5,24 +5,65 @@
 // Vercel instance could make a real visitor pay that cost live). Each of the
 // three NST-backed services (deployment, player-evaluator, goalie-tracking)
 // reads its own row here instead of ever calling NST on the request path -
-// only the daily refresh-nst-caches cron writes these rows.
+// only the daily refresh-nst-caches cron and the signed-in "Refresh" button
+// (/api/refresh-stats) write these rows.
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { nstDataCache } from "@/db/schema";
 
 export type NstCacheId = "deployment" | "playerEvaluator" | "goalieTracking";
 
-export async function readNstCacheRow<T>(id: NstCacheId): Promise<T | null> {
-  const [row] = await db.select().from(nstDataCache).where(eq(nstDataCache.id, id));
-  return row ? (row.data as T) : null;
+export interface NstCached<T> {
+  data: T;
+  /** When this data was actually computed from NST - not when it was read. */
+  updatedAt: Date;
 }
 
-export async function writeNstCacheRow<T>(id: NstCacheId, data: T): Promise<void> {
+// Per warm serverless instance, on top of the DB row. Checked against the
+// row's updatedAt on every read (one tiny query) rather than trusted
+// forever: without that, a refresh written by one instance never reached
+// the others - each kept serving whatever it first loaded until recycled.
+const memory = new Map<NstCacheId, NstCached<unknown>>();
+
+async function readUpdatedAt(id: NstCacheId): Promise<Date | null> {
+  const [row] = await db
+    .select({ updatedAt: nstDataCache.updatedAt })
+    .from(nstDataCache)
+    .where(eq(nstDataCache.id, id));
+  return row?.updatedAt ?? null;
+}
+
+/** What every page request calls - never talks to NST directly. Serves the
+ *  latest DB row (from memory when this instance already has that exact
+ *  version); only falls back to `refresh` (a live NST fetch) if the row has
+ *  genuinely never been seeded yet. */
+export async function getNstCached<T>(id: NstCacheId, refresh: () => Promise<NstCached<T>>): Promise<NstCached<T>> {
+  const cached = memory.get(id) as NstCached<T> | undefined;
+  const latest = await readUpdatedAt(id);
+  if (cached && (!latest || cached.updatedAt.getTime() >= latest.getTime())) return cached;
+
+  const [row] = await db.select().from(nstDataCache).where(eq(nstDataCache.id, id));
+  if (!row) return refresh();
+  const fresh = { data: row.data as T, updatedAt: row.updatedAt };
+  memory.set(id, fresh);
+  return fresh;
+}
+
+/** When this dataset was last computed, without loading it - null if never. */
+export async function getNstCacheUpdatedAt(id: NstCacheId): Promise<Date | null> {
+  return readUpdatedAt(id);
+}
+
+export async function saveNstCached<T>(id: NstCacheId, data: T): Promise<NstCached<T>> {
+  const updatedAt = new Date();
   await db
     .insert(nstDataCache)
-    .values({ id, data: data as object, updatedAt: new Date() })
+    .values({ id, data: data as object, updatedAt })
     .onConflictDoUpdate({
       target: nstDataCache.id,
-      set: { data: data as object, updatedAt: new Date() },
+      set: { data: data as object, updatedAt },
     });
+  const saved = { data, updatedAt };
+  memory.set(id, saved);
+  return saved;
 }

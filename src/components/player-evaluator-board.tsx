@@ -12,6 +12,7 @@ import { PlayerComparisonPanel, type ComparePlayerData } from "@/components/play
 import { PlayerSearchPicker, type PickablePlayer } from "@/components/player-search-picker";
 import { DropReplaceFlow } from "@/components/drop-replace-flow";
 import { TeamMultiSelect } from "@/components/team-multi-select";
+import { StatsRefresh } from "@/components/stats-refresh";
 import { useMyRoster } from "@/lib/use-my-roster";
 import { useYahooFreeAgents } from "@/lib/use-yahoo-free-agents";
 import { useYahooPlayerEligibility } from "@/lib/use-yahoo-player-eligibility";
@@ -67,7 +68,13 @@ export function PlayerEvaluatorBoard({ activeLeagueKey }: { activeLeagueKey: str
   const { roster } = useMyRoster();
   const { freeAgents: yahooFreeAgents } = useYahooFreeAgents(activeLeagueKey);
   const { byName: yahooEligibilityByName } = useYahooPlayerEligibility();
-  const { windows: liveWindows, computedAt, error: statsError, loading: statsLoading } = usePlayerEvaluatorStats();
+  const {
+    windows: liveWindows,
+    computedAt,
+    error: statsError,
+    loading: statsLoading,
+    reload: reloadStats,
+  } = usePlayerEvaluatorStats();
   const usingSampleData = !liveWindows;
   // Season and Last Season are both "full" season windows (as opposed to
   // Last 5/Last 10, which cap GP at the window size by definition) - see
@@ -189,8 +196,8 @@ export function PlayerEvaluatorBoard({ activeLeagueKey }: { activeLeagueKey: str
         </div>
       ) : (
         <div className="rounded-md border-l-4 border-rink-blue bg-rink-blue-light px-4 py-2.5 text-sm text-ink">
-          Live stats from Natural Stat Trick{computedAt ? ` - updated ${new Date(computedAt).toLocaleString()}` : ""}.
-          Luck/Regression columns always compare against a 3-season baseline.
+          Live stats from Natural Stat Trick. Luck/Regression columns always compare against a 3-season
+          baseline. <StatsRefresh dataset="playerEvaluator" computedAt={computedAt} onRefreshed={reloadStats} />
         </div>
       )}
 

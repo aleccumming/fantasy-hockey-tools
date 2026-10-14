@@ -23,6 +23,7 @@ import type { EvaluatorWindow } from "@/lib/player-evaluator-service";
 import type { YahooLeagueTeamRoster, YahooRosterPlayer } from "@/lib/yahoo-fantasy-client";
 import type { HeadshotMap } from "@/lib/headshots";
 import { PlayerHeadshot } from "@/components/player-headshot";
+import { StatsRefresh } from "@/components/stats-refresh";
 import {
   LUCK_COLUMNS,
   LuckLegend,
@@ -126,7 +127,13 @@ export function TradeTargetsBoard({ activeLeagueKey }: { activeLeagueKey: string
   const [selectedTargetKey, setSelectedTargetKey] = useState<string | null>(null);
   const headshots = useHeadshots();
   const { byName: eligibilityByName } = useYahooPlayerEligibility();
-  const { windows, computedAt, error: statsError, loading: statsLoading } = usePlayerEvaluatorStats();
+  const {
+    windows,
+    computedAt,
+    error: statsError,
+    loading: statsLoading,
+    reload: reloadStats,
+  } = usePlayerEvaluatorStats();
   const { teams, slots, error: rostersError, loading: rostersLoading } = useYahooLeagueRosters(activeLeagueKey);
 
   // Until picked, open on Season once it has enough games for a luck
@@ -183,8 +190,8 @@ export function TradeTargetsBoard({ activeLeagueKey }: { activeLeagueKey: string
         </div>
       ) : (
         <div className="rounded-md border-l-4 border-rink-blue bg-rink-blue-light px-4 py-2.5 text-sm text-ink">
-          Live stats from Natural Stat Trick{computedAt ? ` - updated ${new Date(computedAt).toLocaleString()}` : ""}.
-          Luck always compares against a 3-season baseline.
+          Live stats from Natural Stat Trick. Luck always compares against a 3-season baseline.{" "}
+          <StatsRefresh dataset="playerEvaluator" computedAt={computedAt} onRefreshed={reloadStats} />
         </div>
       )}
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { GoalieStartTracking } from "./goalie-tracking-service";
 
 interface GoalieTrackingResponse {
@@ -11,6 +11,9 @@ interface GoalieTrackingResponse {
 export function useGoalieTracking() {
   const [data, setData] = useState<GoalieTrackingResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Bumped by reload() (after the Refresh button pulls new data) to refetch
+  // without a page reload. The current data stays on screen meanwhile.
+  const [reloadToken, setReloadToken] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -31,12 +34,15 @@ export function useGoalieTracking() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [reloadToken]);
+
+  const reload = useCallback(() => setReloadToken((t) => t + 1), []);
 
   return {
     goalies: data?.goalies ?? null,
     computedAt: data?.computedAt ?? null,
     error,
     loading: !error && !data,
+    reload,
   };
 }

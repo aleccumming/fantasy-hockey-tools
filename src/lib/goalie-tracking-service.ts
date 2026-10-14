@@ -18,7 +18,7 @@
 // way.
 import { fetchGoalieStats, currentNstSeason, type NstGoalieRow } from "./nst-client";
 import { normalizeName } from "./name-matching";
-import { readNstCacheRow, writeNstCacheRow } from "./nst-data-cache";
+import { getNstCached, saveNstCached, type NstCached } from "./nst-data-cache";
 
 export interface GoalieStartTracking {
   name: string;
@@ -72,31 +72,16 @@ function shareByName(rows: NstGoalieRow[]): Map<string, number> {
   return shares;
 }
 
-// In-memory only for the lifetime of a single warm serverless instance -
-// the real cross-request/cross-cold-start cache is the DB row this reads
-// through to (see nst-data-cache.ts). Freshness is controlled entirely by
-// how often refresh-nst-caches' cron writes that row, not by any TTL here.
-let memoryCache: GoalieStartTracking[] | null = null;
-
 /** What every page request calls - never talks to NST directly. Reads the
- *  DB row the daily cron last wrote; only falls back to a live fetch if
- *  that row has genuinely never been seeded yet (e.g. right after this
- *  table was created, before the cron's first run). */
-export async function getGoalieStartTracking(): Promise<GoalieStartTracking[]> {
-  if (memoryCache) return memoryCache;
-
-  const dbData = await readNstCacheRow<GoalieStartTracking[]>("goalieTracking");
-  if (dbData) {
-    memoryCache = dbData;
-    return dbData;
-  }
-
-  return refreshGoalieTrackingCache();
+ *  DB row the daily cron (or the Refresh button) last wrote; only falls
+ *  back to a live fetch if that row has genuinely never been seeded yet. */
+export async function getGoalieStartTracking(): Promise<NstCached<GoalieStartTracking[]>> {
+  return getNstCached("goalieTracking", refreshGoalieTrackingCache);
 }
 
-/** The real live NST fetch + computation - only the cron (and the one-time
- *  bootstrap fallback above) should call this directly. */
-export async function refreshGoalieTrackingCache(): Promise<GoalieStartTracking[]> {
+/** The real live NST fetch + computation - only the cron, the Refresh button
+ *  (/api/refresh-stats) and the bootstrap fallback above call this. */
+export async function refreshGoalieTrackingCache(): Promise<NstCached<GoalieStartTracking[]>> {
   const season = await currentNstSeason();
   const [recentRows, seasonRows] = await Promise.all([
     fetchGoalieStats({
@@ -157,7 +142,5 @@ export async function refreshGoalieTrackingCache(): Promise<GoalieStartTracking[
     return b.recentShare - a.recentShare;
   });
 
-  memoryCache = data;
-  await writeNstCacheRow("goalieTracking", data);
-  return data;
+  return saveNstCached("goalieTracking", data);
 }

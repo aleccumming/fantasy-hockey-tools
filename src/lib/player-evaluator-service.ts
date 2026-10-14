@@ -10,7 +10,7 @@ import type { SkaterRateStats } from "./streamer-stats";
 import { currentNstSeason, baselineSeasonRange, previousNstSeason, seasonRangeSpanning } from "./nst-client";
 import { fetchSkaterWindow, toSkaterRateStats, type SkaterWindowRow } from "./skater-window";
 import { dedupePlayersAcrossSources, playerNameGroupKey } from "./player-identity-key";
-import { readNstCacheRow, writeNstCacheRow } from "./nst-data-cache";
+import { getNstCached, saveNstCached, type NstCached } from "./nst-data-cache";
 
 export type EvaluatorWindow = "last5" | "last10" | "season" | "lastSeason";
 
@@ -63,12 +63,6 @@ function scaledMinToi(rows: Map<string, SkaterWindowRow>, window: EvaluatorWindo
   return (fullMinToi * Math.min(maxGp, fullGames)) / fullGames;
 }
 
-// In-memory only for the lifetime of a single warm serverless instance -
-// the real cross-request/cross-cold-start cache is the DB row this reads
-// through to (see nst-data-cache.ts). Freshness is controlled entirely by
-// how often refresh-nst-caches' cron writes that row, not by any TTL here.
-let memoryCache: PlayerEvaluatorStats | null = null;
-
 function buildStats(
   rows: Map<string, SkaterWindowRow>,
   baselineRows: Map<string, SkaterWindowRow>,
@@ -91,24 +85,15 @@ function buildStats(
 }
 
 /** What every page request calls - never talks to NST directly. Reads the
- *  DB row the daily cron last wrote; only falls back to a live fetch if
- *  that row has genuinely never been seeded yet (e.g. right after this
- *  table was created, before the cron's first run). */
-export async function getPlayerEvaluatorStats(): Promise<PlayerEvaluatorStats> {
-  if (memoryCache) return memoryCache;
-
-  const dbData = await readNstCacheRow<PlayerEvaluatorStats>("playerEvaluator");
-  if (dbData) {
-    memoryCache = dbData;
-    return dbData;
-  }
-
-  return refreshPlayerEvaluatorCache();
+ *  DB row the daily cron (or the Refresh button) last wrote; only falls
+ *  back to a live fetch if that row has genuinely never been seeded yet. */
+export async function getPlayerEvaluatorStats(): Promise<NstCached<PlayerEvaluatorStats>> {
+  return getNstCached("playerEvaluator", refreshPlayerEvaluatorCache);
 }
 
-/** The real live NST fetch + computation - only the cron (and the one-time
- *  bootstrap fallback above) should call this directly. */
-export async function refreshPlayerEvaluatorCache(): Promise<PlayerEvaluatorStats> {
+/** The real live NST fetch + computation - only the cron, the Refresh button
+ *  (/api/refresh-stats) and the bootstrap fallback above call this. */
+export async function refreshPlayerEvaluatorCache(): Promise<NstCached<PlayerEvaluatorStats>> {
   const [season, baselineRange] = await Promise.all([currentNstSeason(), baselineSeasonRange()]);
   const lastSeason = previousNstSeason(season);
   // Ends one season further back than lastSeason itself, so Last Season's
@@ -153,7 +138,5 @@ export async function refreshPlayerEvaluatorCache(): Promise<PlayerEvaluatorStat
     lastSeason: buildStats(lastSeasonRows, lastSeasonBaselineRows, scaledMinToi(lastSeasonRows, "lastSeason")),
   };
 
-  memoryCache = data;
-  await writeNstCacheRow("playerEvaluator", data);
-  return data;
+  return saveNstCached("playerEvaluator", data);
 }

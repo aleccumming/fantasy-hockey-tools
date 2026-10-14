@@ -11,6 +11,7 @@
 import { getTeamStandings } from "./nhl-standings";
 import { getUpcomingGamesByTeam } from "./schedule";
 import { getGoalieStartTracking } from "./goalie-tracking-service";
+import { getNstCacheUpdatedAt } from "./nst-data-cache";
 import { estimateWinProbability } from "./win-probability";
 
 export interface LiveSpotStart {
@@ -25,7 +26,7 @@ export interface LiveSpotStart {
   seasonSavePct: number;
 }
 
-let cache: { data: LiveSpotStart[]; expiresAt: number; rangeKey: string } | null = null;
+let cache: { data: LiveSpotStart[]; expiresAt: number; rangeKey: string; trackingUpdatedAt: number } | null = null;
 const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
 
 export async function getLiveSpotStarts(
@@ -34,7 +35,16 @@ export async function getLiveSpotStarts(
   forceRefresh = false
 ): Promise<LiveSpotStart[]> {
   const rangeKey = `${start}:${end}`;
-  if (!forceRefresh && cache && cache.rangeKey === rangeKey && cache.expiresAt > Date.now()) {
+  // Also rebuilt whenever the Start Tracker data underneath has been
+  // refreshed, so its Refresh button reaches Spot Starts too.
+  const trackingUpdatedAt = (await getNstCacheUpdatedAt("goalieTracking"))?.getTime() ?? 0;
+  if (
+    !forceRefresh &&
+    cache &&
+    cache.rangeKey === rangeKey &&
+    cache.expiresAt > Date.now() &&
+    cache.trackingUpdatedAt === trackingUpdatedAt
+  ) {
     return cache.data;
   }
 
@@ -44,7 +54,7 @@ export async function getLiveSpotStarts(
     getGoalieStartTracking(),
   ]);
 
-  const starterByTeam = new Map(tracking.filter((g) => g.isCurrentStarter).map((g) => [g.team, g]));
+  const starterByTeam = new Map(tracking.data.filter((g) => g.isCurrentStarter).map((g) => [g.team, g]));
 
   const spotStarts: LiveSpotStart[] = [];
   for (const [team, games] of Object.entries(gamesByTeam)) {
@@ -74,6 +84,6 @@ export async function getLiveSpotStarts(
   }
 
   const data = spotStarts.sort((a, b) => b.winProbability - a.winProbability);
-  cache = { data, expiresAt: Date.now() + CACHE_TTL_MS, rangeKey };
+  cache = { data, expiresAt: Date.now() + CACHE_TTL_MS, rangeKey, trackingUpdatedAt: tracking.updatedAt.getTime() };
   return data;
 }

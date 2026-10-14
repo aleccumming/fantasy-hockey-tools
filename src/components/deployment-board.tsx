@@ -11,6 +11,7 @@ import { normalizeName } from "@/lib/name-matching";
 import { PlayerHeadshot } from "@/components/player-headshot";
 import { abbreviateFirstName } from "@/components/skater-rankings-table";
 import { TeamMultiSelect } from "@/components/team-multi-select";
+import { StatsRefresh } from "@/components/stats-refresh";
 import { NHL_TEAMS } from "@/lib/schedule";
 import {
   DEPLOYMENT_BASELINES,
@@ -82,7 +83,7 @@ function shareDeltaColor(share: number): string {
 }
 
 export function DeploymentBoard({ activeLeagueKey }: { activeLeagueKey: string | null }) {
-  const { baselines, computedAt, error, loading } = useDeploymentBoosts();
+  const { baselines, computedAt, error, loading, reload } = useDeploymentBoosts();
   const { byName: yahooEligibilityByName } = useYahooPlayerEligibility();
   const headshots = useHeadshots();
   const { roster } = useMyRoster();
@@ -164,7 +165,9 @@ export function DeploymentBoard({ activeLeagueKey }: { activeLeagueKey: string |
         whatever PP time existed. Only ice time is tracked here, not linemate identity specifically - no free source
         publishes real-time line combinations, but a genuine role change almost always comes with better linemates
         too.
-        {computedAt && <> Updated {new Date(computedAt).toLocaleString()}.</>}
+        <div className="mt-1.5">
+          <StatsRefresh dataset="deployment" computedAt={computedAt} onRefreshed={reload} />
+        </div>
       </div>
 
       <div className="mt-4 flex gap-1">

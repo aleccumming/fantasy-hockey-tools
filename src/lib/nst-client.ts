@@ -197,8 +197,15 @@ function parseRows(html: string): string[][] {
   });
 }
 
+// No Next.js fetch cache on NST calls: only the daily cron, the Refresh
+// button and the one-time bootstrap ever call NST (pages read the
+// nst_data_cache DB row instead), and all of them want NST's current data.
+// A cached response here made Refresh quietly return up-to-an-hour-old
+// reports while the banner said "Updated just now".
+const NST_FETCH_OPTIONS: RequestInit = { cache: "no-store" };
+
 async function fetchNst(stdoi: "std" | "oi", opts: NstQueryOptions): Promise<string[][]> {
-  const res = await fetch(buildUrl(stdoi, opts), { next: { revalidate: 3600 } });
+  const res = await fetch(buildUrl(stdoi, opts), NST_FETCH_OPTIONS);
   if (!res.ok) throw new Error(`Natural Stat Trick request failed: ${res.status}`);
   return parseRows(await res.text());
 }
@@ -312,7 +319,7 @@ function parseGoalieRow(cells: string[]): NstGoalieRow | null {
 }
 
 export async function fetchGoalieStats(opts: NstQueryOptions): Promise<NstGoalieRow[]> {
-  const res = await fetch(buildGoalieUrl(opts), { next: { revalidate: 3600 } });
+  const res = await fetch(buildGoalieUrl(opts), NST_FETCH_OPTIONS);
   if (!res.ok) throw new Error(`Natural Stat Trick request failed: ${res.status}`);
   const rows = parseRows(await res.text());
   return rows.map(parseGoalieRow).filter((r): r is NstGoalieRow => r !== null);
