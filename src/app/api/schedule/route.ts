@@ -1,14 +1,13 @@
 import { NextResponse } from "next/server";
-import { getScheduleAnalysis } from "@/lib/schedule";
+import { getScheduleAnalysis } from "@/lib/nhl-schedule-service";
 
-export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const forceRefresh = searchParams.get("refresh") === "1";
-
+export async function GET() {
   try {
-    const analysis = await getScheduleAnalysis(forceRefresh);
+    const analysis = await getScheduleAnalysis();
     return NextResponse.json(analysis);
   } catch (err) {
+    // Logged so prod logs show WHY, not just a bare 502.
+    console.error("/api/schedule failed:", err);
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "Failed to load schedule" },
       { status: 502 }

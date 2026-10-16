@@ -12,6 +12,8 @@ export async function GET(req: NextRequest) {
     const spotStarts = await getLiveSpotStarts(start, end);
     return NextResponse.json({ spotStarts, computedAt: new Date().toISOString() });
   } catch (err) {
+    // Logged so prod logs show WHY, not just a bare 502.
+    console.error("/api/goalie-spot-starts failed:", err);
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "Failed to load goalie spot starts" },
       { status: 502 }

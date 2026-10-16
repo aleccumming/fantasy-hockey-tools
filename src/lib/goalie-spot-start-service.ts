@@ -9,7 +9,7 @@
 // gotten the most starts on this team lately," not a confirmed lineup - on
 // a back-to-back or a surprise rest day, the real starter can differ.
 import { getTeamStandings } from "./nhl-standings";
-import { getUpcomingGamesByTeam } from "./schedule";
+import { getUpcomingGamesByTeam } from "./nhl-schedule-service";
 import { getGoalieStartTracking } from "./goalie-tracking-service";
 import { getNstCacheUpdatedAt } from "./nst-data-cache";
 import { estimateWinProbability } from "./win-probability";

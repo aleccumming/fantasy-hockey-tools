@@ -3,6 +3,8 @@
 // win-probability.ts), not a goal-differential proxy. Team abbreviations
 // here already match NHL_TEAMS (schedule.ts) exactly, no normalization
 // needed like NST's three-word codes require.
+import { fetchNhlJson } from "./nhl-api";
+
 export interface TeamStanding {
   team: string;
   gamesPlayed: number;
@@ -66,11 +68,7 @@ export async function getCurrentNhlSeasonId(forceRefresh = false): Promise<strin
 async function ensureStandingsCache(forceRefresh: boolean): Promise<void> {
   if (!forceRefresh && cache && cache.expiresAt > Date.now()) return;
 
-  const res = await fetch("https://api-web.nhle.com/v1/standings/now", {
-    next: { revalidate: 3600 },
-  });
-  if (!res.ok) throw new Error(`NHL standings request failed: ${res.status}`);
-  const json: NhlStandingsResponse = await res.json();
+  const json = await fetchNhlJson<NhlStandingsResponse>("https://api-web.nhle.com/v1/standings/now", 3600);
 
   const data: Record<string, TeamStanding> = {};
   for (const row of json.standings) {

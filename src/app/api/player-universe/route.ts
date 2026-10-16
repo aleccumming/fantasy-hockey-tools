@@ -20,6 +20,8 @@ export async function GET(request: Request) {
     }));
     return NextResponse.json(universe);
   } catch (err) {
+    // Logged so prod logs show WHY, not just a bare 502.
+    console.error("/api/player-universe failed:", err);
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "Failed to load player universe" },
       { status: 502 }

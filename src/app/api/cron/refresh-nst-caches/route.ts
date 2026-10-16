@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { refreshDeploymentCache } from "@/lib/deployment-service";
 import { refreshPlayerEvaluatorCache } from "@/lib/player-evaluator-service";
 import { refreshGoalieTrackingCache } from "@/lib/goalie-tracking-service";
+import { refreshNhlScheduleCache } from "@/lib/nhl-schedule-service";
 
 // NST's own server is slow (6-20s+, confirmed live) the first time it
 // computes a "team games played"-filtered report - this cron can easily
@@ -28,13 +29,17 @@ export async function GET(request: NextRequest) {
     refreshDeploymentCache(),
     refreshPlayerEvaluatorCache(),
     refreshGoalieTrackingCache(),
+    // Not NST, but the same daily "store it, pages only read it" job - the
+    // schedule rarely changes, and a failed pull just keeps yesterday's.
+    refreshNhlScheduleCache(),
   ]);
 
-  const [deployment, playerEvaluator, goalieTracking] = results;
+  const [deployment, playerEvaluator, goalieTracking, nhlSchedule] = results;
   return NextResponse.json({
     deployment: deployment.status,
     playerEvaluator: playerEvaluator.status,
     goalieTracking: goalieTracking.status,
+    nhlSchedule: nhlSchedule.status,
     errors: results
       .filter((r): r is PromiseRejectedResult => r.status === "rejected")
       .map((r) => {

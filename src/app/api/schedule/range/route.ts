@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { currentWeekRange, getGameDatesInRangeByTeam } from "@/lib/schedule";
+import { currentWeekRange } from "@/lib/schedule";
+import { getGameDatesInRangeByTeam } from "@/lib/nhl-schedule-service";
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -20,6 +21,8 @@ export async function GET(request: Request) {
     const gameDatesByTeam = await getGameDatesInRangeByTeam(start, end);
     return NextResponse.json({ start, end, gameDatesByTeam });
   } catch (err) {
+    // Logged so prod logs show WHY, not just a bare 502.
+    console.error("/api/schedule/range failed:", err);
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "Failed to load schedule" },
       { status: 502 }

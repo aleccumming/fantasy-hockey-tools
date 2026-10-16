@@ -106,7 +106,7 @@ export const yahooPlayerEligibilityCache = pgTable("yahoo_player_eligibility_cac
 // computation. A daily cron (refresh-nst-caches) is the only thing that
 // writes these rows; every page request just reads one.
 export const nstDataCache = pgTable("nst_data_cache", {
-  id: text("id").primaryKey(), // "deployment" | "playerEvaluator" | "goalieTracking"
+  id: text("id").primaryKey(), // "deployment" | "playerEvaluator" | "goalieTracking" | "nhlSchedule" (see CacheRowId)
   data: jsonb("data").notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });

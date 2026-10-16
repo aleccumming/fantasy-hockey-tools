@@ -115,7 +115,12 @@ export function DropReplaceFlow({
     loading: yahooRosterLoading,
   } = useYahooRoster(activeLeagueKey);
   const { freeAgents: yahooFreeAgents, loading: yahooFreeAgentsLoading } = useYahooFreeAgents(activeLeagueKey);
-  const { data: schedule, loading: scheduleLoading, error: scheduleError } = useScheduleRange(rangeStart, rangeEnd);
+  const {
+    data: schedule,
+    loading: scheduleLoading,
+    error: scheduleError,
+    retry: retrySchedule,
+  } = useScheduleRange(rangeStart, rangeEnd);
 
   // A connected Yahoo league is the real roster/slots - the manual editor
   // is a fallback for when no league is connected yet, not something that
@@ -612,10 +617,18 @@ export function DropReplaceFlow({
           ) : scheduleLoading ? (
             <p className="mt-4 text-center text-sm text-ink-dim">Loading the NHL schedule for this range...</p>
           ) : scheduleError ? (
-            <p className="mt-4 text-center text-sm text-rink-red">
-              Couldn&apos;t load the schedule ({scheduleError}) - starts below aren&apos;t reliable until this
-              loads. Try a different date range or refresh.
-            </p>
+            <div className="mt-4 text-center text-sm text-rink-red">
+              <p title={scheduleError}>
+                Couldn&apos;t load the NHL schedule - the NHL&apos;s API is probably rate-limiting us. It
+                usually clears within a minute.
+              </p>
+              <button
+                onClick={retrySchedule}
+                className="mt-2 rounded border border-rink-blue px-3 py-1 text-xs font-semibold text-rink-blue hover:bg-rink-blue hover:text-white"
+              >
+                Try again
+              </button>
+            </div>
           ) : (
             <>
               <SkaterRankingsTable

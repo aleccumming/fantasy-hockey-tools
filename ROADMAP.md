@@ -419,6 +419,27 @@ Players' tab bar.
       (Streamer Finder). Short metric headers ("oiSCF", with "per 60" in the
       group header), and the sort arrow takes no width. Checked with a
       script that flags any overflowing cell across pages and widths.
+- [x] **"Couldn't load schedule" in Streamer Finder** (2026-10-16). Prod
+      logs showed /api/schedule/range 502ing 3x in a row (the user
+      refreshing) right as /api/headshots also 502'd. The schedule was
+      fetched live per team - 2 NHL requests each (a 307 from `/now`), so a
+      64-request burst whenever Next's fetch cache was cold - and the NHL
+      rate-limited it (reproduced locally: still 429 after batching + 5
+      retries). One failed team failed the whole schedule; refreshing just
+      repeated the burst. **Fix: the schedule is now stored**, like the NST
+      data: `nhl-schedule-service.ts` keeps it in `nst_data_cache` row
+      `"nhlSchedule"` (no migration needed), refreshed by the daily
+      refresh-nst-caches cron, and pages only read the row (~7ms). The pull
+      uses the NHL stats API (`api.nhle.com/stats/rest/en/game`), which
+      returns the whole league's season in ONE request - verified identical
+      to the per-team data for all 32 teams. Refuses to store a pull missing
+      any team. Server-side code moved out of `schedule.ts` (client
+      components import it, so it can't pull in DB code). Also: all NHL
+      calls go through `nhl-api.ts` (retry/backoff on 429/5xx, batching),
+      routes `console.error` the real cause, and `useScheduleRange` retries
+      twice and has a working "Try again". **Not yet done:** rosters/
+      headshots (`nhl-roster.ts`) still fetch 32 teams live (batched + retry
+      now), so could get the same stored treatment.
 - [x] **Refresh button for stats** (2026-10-14). Skaters, Trades,
       Deployment and Goalies banners show "Updated 3 hrs ago" plus a Refresh
       button (`stats-refresh.tsx`) that pulls that one dataset from NST now
