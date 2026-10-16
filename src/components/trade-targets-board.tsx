@@ -611,6 +611,118 @@ function OfferBuilder({
         are left out of the lineup math. Positional need is season-level - it ignores who plays on which
         night.
       </p>
+
+      {myTeam && (
+        <div className="mt-5 border-t border-stripe pt-4">
+          <div className="text-[11px] font-bold uppercase tracking-wide text-ink-faint">Both rosters</div>
+          <p className="mt-0.5 text-xs text-ink-dim">
+            For building a bigger deal (2-for-2 and up) by hand.
+          </p>
+          <div className="mt-2 grid gap-4 lg:grid-cols-2">
+            <RosterPanel
+              title={myTeam.name}
+              roster={myTeam.roster}
+              statsIndex={statsIndex}
+              headshots={headshots}
+            />
+            <RosterPanel
+              title={owner.team.name}
+              roster={owner.team.roster}
+              statsIndex={statsIndex}
+              headshots={headshots}
+              highlight={owner.player}
+            />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+const POSITION_ORDER: Record<string, number> = { C: 0, LW: 1, RW: 2, D: 3 };
+
+/** One team's full roster (incl. IR and goalies, unlike the lineup math),
+ *  forwards then D then goalies, best P/GP first within each. */
+function RosterPanel({
+  title,
+  roster,
+  statsIndex,
+  headshots,
+  highlight,
+}: {
+  title: string;
+  roster: YahooRosterPlayer[];
+  statsIndex: Map<string, RankedSkaterStats>;
+  headshots: HeadshotMap;
+  highlight?: YahooRosterPlayer;
+}) {
+  const rows = roster
+    .map((player) => {
+      const stats = player.isGoalie ? null : (lookup(statsIndex, player) ?? null);
+      // Goalies have no skater positions; sort them last.
+      const order = player.isGoalie ? 9 : Math.min(...player.positions.map((pos) => POSITION_ORDER[pos] ?? 9));
+      // Forwards (C/LW/RW) share one group so multi-position players don't split it up.
+      return { player, stats, group: order <= 2 ? 0 : order };
+    })
+    .sort((a, b) => {
+      if (a.group !== b.group) return a.group - b.group;
+      return (b.stats ? pointsPerGame(b.stats) : -1) - (a.stats ? pointsPerGame(a.stats) : -1);
+    });
+
+  return (
+    <div className="min-w-0">
+      <h3 className="truncate text-sm font-semibold text-ink" title={title}>
+        {title}
+      </h3>
+      <div className="mt-1.5 overflow-x-auto rounded-md border border-line">
+        <table className="w-full text-sm" style={{ minWidth: 420 }}>
+          <thead>
+            <tr className="border-b border-line text-left text-[11px] font-semibold uppercase tracking-wide text-ink-dim">
+              <th className="px-2 py-1.5">Player</th>
+              <th className="px-2 py-1.5 normal-case">P/GP</th>
+              <th className="px-2 py-1.5">C-Score</th>
+              <th className="px-2 py-1.5">Luck</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map(({ player, stats, group }, i) => (
+              <tr
+                key={`${player.name}|${player.team}|${player.positions.join(",")}|${player.isGoalie}`}
+                className={`border-b border-stripe last:border-b-0 ${
+                  i > 0 && rows[i - 1].group !== group ? "border-t-2 border-t-line" : ""
+                } ${player === highlight ? "bg-rink-blue-light" : i % 2 === 1 ? "bg-stripe/60" : ""}`}
+              >
+                <td className="px-2 py-1.5">
+                  <div className="flex items-center gap-2">
+                    <PlayerCell
+                      player={{
+                        name: player.name,
+                        team: player.team,
+                        positions: player.isGoalie ? ["G"] : player.positions,
+                      }}
+                      headshots={headshots}
+                    />
+                    {player.isOnIR && (
+                      <span className="shrink-0 rounded bg-rink-red/10 px-1 py-0.5 text-[10px] font-bold text-rink-red">
+                        IR
+                      </span>
+                    )}
+                  </div>
+                </td>
+                <td className="px-2 py-1.5 tabular-nums text-ink">{stats ? pointsPerGame(stats).toFixed(2) : "-"}</td>
+                <td className="px-2 py-1.5 tabular-nums text-ink">{stats ? stats.compositeRank.toFixed(1) : "-"}</td>
+                <td className="px-2 py-1.5">
+                  {player.isGoalie ? (
+                    <span className="text-xs text-ink-faint">-</span>
+                  ) : (
+                    <LuckChip index={stats ? luckIndex(stats) : null} />
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
