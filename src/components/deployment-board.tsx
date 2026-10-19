@@ -7,7 +7,7 @@ import { applyEligibilityOverrides } from "@/lib/apply-eligibility-overrides";
 import { useHeadshots } from "@/lib/use-headshots";
 import { useMyRoster } from "@/lib/use-my-roster";
 import { useYahooFreeAgents } from "@/lib/use-yahoo-free-agents";
-import { normalizeName } from "@/lib/name-matching";
+import { playerNameGroupKey } from "@/lib/player-identity-key";
 import { PlayerHeadshot } from "@/components/player-headshot";
 import { abbreviateFirstName } from "@/components/skater-rankings-table";
 import { TeamMultiSelect } from "@/components/team-multi-select";
@@ -143,8 +143,8 @@ export function DeploymentBoard({ activeLeagueKey }: { activeLeagueKey: string |
     // "Unowned" = actually available per the connected Yahoo league when
     // one's active; otherwise just "not on my (sample/manual) roster" -
     // same convention as the Skaters page's ownership filter.
-    const availableSet = yahooFreeAgents ? new Set(yahooFreeAgents.map((fa) => normalizeName(fa.name))) : null;
-    const rosterSet = new Set(roster.map((p) => normalizeName(p.name)));
+    const availableSet = yahooFreeAgents ? new Set(yahooFreeAgents.map((fa) => playerNameGroupKey(fa.name, fa.positions))) : null;
+    const rosterSet = new Set(roster.map((p) => playerNameGroupKey(p.name, p.positions)));
     return (p: { name: string; team: string; positions: Position[] }) => {
       // Display split only - deploymentScore stays ranked across all skaters,
       // since a delta against a player's own baseline isn't skewed by F vs D.
@@ -152,7 +152,9 @@ export function DeploymentBoard({ activeLeagueKey }: { activeLeagueKey: string |
       if (teamFilters.size > 0 && !teamFilters.has(p.team)) return false;
       if (query && !p.name.toLowerCase().includes(query)) return false;
       if (ownershipFilter === "unowned") {
-        const key = normalizeName(p.name);
+        // Name + F/D, so the free D Pettersson doesn't make the rostered
+        // F Pettersson look available too.
+        const key = playerNameGroupKey(p.name, p.positions);
         if (availableSet ? !availableSet.has(key) : rosterSet.has(key)) return false;
       }
       return true;

@@ -16,9 +16,8 @@ import { StatsRefresh } from "@/components/stats-refresh";
 import { useMyRoster } from "@/lib/use-my-roster";
 import { useYahooFreeAgents } from "@/lib/use-yahoo-free-agents";
 import { useYahooPlayerEligibility } from "@/lib/use-yahoo-player-eligibility";
-import { normalizeName } from "@/lib/name-matching";
 import { applyEligibilityOverrides } from "@/lib/apply-eligibility-overrides";
-import { dedupePlayersAcrossSources } from "@/lib/player-identity-key";
+import { dedupePlayersAcrossSources, playerNameGroupKey } from "@/lib/player-identity-key";
 import type { Position } from "@/lib/types";
 
 type PageTab = "rankings" | "compare";
@@ -93,8 +92,8 @@ export function PlayerEvaluatorBoard({ activeLeagueKey }: { activeLeagueKey: str
     const query = nameQuery.trim().toLowerCase();
     // "Unowned" = actually available per the connected Yahoo league when
     // one's active; otherwise just "not on my (sample/manual) roster."
-    const availableSet = yahooFreeAgents ? new Set(yahooFreeAgents.map((fa) => normalizeName(fa.name))) : null;
-    const rosterSet = new Set(roster.map((p) => normalizeName(p.name)));
+    const availableSet = yahooFreeAgents ? new Set(yahooFreeAgents.map((fa) => playerNameGroupKey(fa.name, fa.positions))) : null;
+    const rosterSet = new Set(roster.map((p) => playerNameGroupKey(p.name, p.positions)));
     return ranked.filter((p) => {
       if (group === "F" && positionFilters.size > 0 && !p.positions.some((pos) => positionFilters.has(pos))) {
         return false;
@@ -104,7 +103,9 @@ export function PlayerEvaluatorBoard({ activeLeagueKey }: { activeLeagueKey: str
       if (isFullSeasonWindow && p.gamesPlayed < minGp) return false;
       if (query && !p.name.toLowerCase().includes(query)) return false;
       if (ownershipFilter === "unowned") {
-        const key = normalizeName(p.name);
+        // Name + F/D, so the free D Pettersson doesn't make the rostered
+        // F Pettersson look available too.
+        const key = playerNameGroupKey(p.name, p.positions);
         if (availableSet ? !availableSet.has(key) : rosterSet.has(key)) return false;
       }
       return true;

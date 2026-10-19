@@ -8,8 +8,7 @@ import type { RankedSkaterStats } from "@/lib/streamer-stats";
 import { useMyRoster } from "@/lib/use-my-roster";
 import { useYahooRoster } from "@/lib/use-yahoo-roster";
 import { useYahooFreeAgents } from "@/lib/use-yahoo-free-agents";
-import { normalizeName } from "@/lib/name-matching";
-import { dedupePlayersAcrossSources } from "@/lib/player-identity-key";
+import { dedupePlayersAcrossSources, playerNameGroupKey } from "@/lib/player-identity-key";
 import { RosterEditor, type RosterPoolPlayer } from "@/components/roster-editor";
 import type { SkaterPosition } from "@/lib/types";
 import type { PlayerEvaluatorStats } from "@/lib/player-evaluator-service";
@@ -232,7 +231,7 @@ export function DropReplaceFlow({
   // free agents, using Yahoo's own multi-position eligibility. Otherwise,
   // falls back to "anyone not on my roster."
   const candidates = useMemo(() => {
-    const rosterSet = new Set(roster.map((p) => normalizeName(p.name)));
+    const rosterSet = new Set(roster.map((p) => playerNameGroupKey(p.name, p.positions)));
     const groupOk = (positions: string[]) => {
       const group = positions.includes("D") ? "D" : "F";
       return groupFilter === group;
@@ -241,11 +240,17 @@ export function DropReplaceFlow({
     if (usingYahoo && !yahooFreeAgents) return []; // still loading - don't flash "everyone" as a candidate
 
     if (yahooFreeAgents) {
-      const rankIndex = new Map(allRanked.map((p, i) => [normalizeName(p.name), i]));
+      // Name + F/D throughout, so a same-name pair (the VAN Petterssons)
+      // neither hides the other nor borrows the other's stats.
+      const rankIndex = new Map<string, number>();
+      allRanked.forEach((p, i) => {
+        const key = playerNameGroupKey(p.name, p.positions);
+        if (!rankIndex.has(key)) rankIndex.set(key, i);
+      });
       return yahooFreeAgents
-        .filter((fa) => !rosterSet.has(normalizeName(fa.name)) && groupOk(fa.positions))
+        .filter((fa) => !rosterSet.has(playerNameGroupKey(fa.name, fa.positions)) && groupOk(fa.positions))
         .flatMap((fa) => {
-          const i = rankIndex.get(normalizeName(fa.name));
+          const i = rankIndex.get(playerNameGroupKey(fa.name, fa.positions));
           if (i === undefined) return []; // no stats in this window, so nothing to rank
           return [{ index: i, player: { ...allRanked[i], team: fa.team, positions: fa.positions } }];
         })
@@ -253,7 +258,7 @@ export function DropReplaceFlow({
         .map((x) => x.player);
     }
 
-    return allRanked.filter((p) => !rosterSet.has(normalizeName(p.name)) && groupOk(p.positions));
+    return allRanked.filter((p) => !rosterSet.has(playerNameGroupKey(p.name, p.positions)) && groupOk(p.positions));
   }, [allRanked, groupFilter, roster, yahooFreeAgents, usingYahoo]);
 
   // Search pool for the roster editor: everyone in the stat windows.
