@@ -32,7 +32,15 @@
 import { fetchIndividualStats, currentNstSeason, previousNstSeason, type NstIndividualRow } from "./nst-client";
 import { buildPlayerIdentityMap, lookupPlayerIdentity } from "./player-identity-key";
 import { getNstCached, saveNstCached, type NstCached } from "./nst-data-cache";
-import type { DeploymentPlayer, RankedDeploymentPlayer, DeploymentBaseline, DeploymentBoostsByBaseline } from "./deployment-types";
+import type {
+  DeploymentPlayer,
+  RankedDeploymentPlayer,
+  DeploymentBaseline,
+  DeploymentBoostsByBaseline,
+  DeploymentRolePlayer,
+  DeploymentRolesByWindow,
+  DeploymentCacheData,
+} from "./deployment-types";
 
 // Re-exported so existing server-side imports from "./deployment-service"
 // (the API route, the cron) keep working - client code should import these
@@ -266,16 +274,49 @@ function computeDeployment(
   return ranked.sort((a, b) => a.deploymentScore - b.deploymentScore);
 }
 
+/** Every skater who played in the window, at their raw deployment level
+ *  there - no baseline floor, since this is for finding who's being used
+ *  now, not who changed. */
+function computeRoles(rows: SituationRows): DeploymentRolePlayer[] {
+  const ppByName = byPlayerKey(rows.ppRows);
+  const ppTeamTotals = summedPpToiByTeam(rows.ppRows);
+  const teamGames = teamGamesByTeam(rows.toiRows);
+
+  return rows.toiRows
+    .filter((r) => r.gp > 0)
+    .map((r) => {
+      const pp = lookupPlayer(ppByName, r.name, r.team, r.position);
+      return {
+        name: r.name,
+        team: r.team,
+        positions: [r.position],
+        gamesPlayed: r.gp,
+        toiPerGame: toiPerGame(r),
+        ppToiPerGame: toiPerGame(pp),
+        ppShare: ppShare(pp, r.gp, ppTeamTotals, teamGames),
+      };
+    });
+}
+
 /** What every page request calls - never talks to NST directly. Reads the
  *  DB row the daily cron (or the Refresh button) last wrote; only falls
- *  back to a live fetch if that row has genuinely never been seeded yet. */
-export async function getDeploymentBoosts(): Promise<NstCached<DeploymentBoostsByBaseline>> {
-  return getNstCached("deployment", refreshDeploymentCache);
+ *  back to a live fetch if that row has genuinely never been seeded yet.
+ *  roles is null for a row written before roles existed, until the next
+ *  refresh rewrites it. */
+export async function getDeploymentBoosts(): Promise<
+  NstCached<{ baselines: DeploymentBoostsByBaseline; roles: DeploymentRolesByWindow | null }>
+> {
+  const { data, updatedAt } = await getNstCached<DeploymentCacheData | DeploymentBoostsByBaseline>(
+    "deployment",
+    refreshDeploymentCache
+  );
+  if ("baselines" in data) return { data, updatedAt };
+  return { data: { baselines: data, roles: null }, updatedAt };
 }
 
 /** The real live NST fetch + computation - only the cron, the Refresh button
  *  (/api/refresh-stats) and the bootstrap fallback above call this. */
-export async function refreshDeploymentCache(): Promise<NstCached<DeploymentBoostsByBaseline>> {
+export async function refreshDeploymentCache(): Promise<NstCached<DeploymentCacheData>> {
   const season = await currentNstSeason();
   const lastSeason = previousNstSeason(season);
 
@@ -318,7 +359,7 @@ export async function refreshDeploymentCache(): Promise<NstCached<DeploymentBoos
     },
   };
 
-  const data: DeploymentBoostsByBaseline = {
+  const baselines: DeploymentBoostsByBaseline = {
     previousGame: computeDeployment(recent, baselinesBySource.previousGame, MIN_BASELINE_GP.previousGame),
     last3Games: computeDeployment(recent, baselinesBySource.last3Games, MIN_BASELINE_GP.last3Games),
     thisSeason: computeDeployment(recent, baselinesBySource.thisSeason, MIN_BASELINE_GP.thisSeason),
@@ -327,5 +368,13 @@ export async function refreshDeploymentCache(): Promise<NstCached<DeploymentBoos
     lastSeason: computeDeployment(recent, lastSeasonFull, MIN_BASELINE_GP.lastSeason),
   };
 
-  return saveNstCached("deployment", data);
+  // Unsubtracted windows - a role is a level, not a comparison, so the
+  // most recent game belongs in every one of them.
+  const roles: DeploymentRolesByWindow = {
+    lastGame: computeRoles(window1),
+    last4Games: computeRoles(window4),
+    thisSeason: computeRoles(thisSeasonFull),
+  };
+
+  return saveNstCached("deployment", { baselines, roles });
 }

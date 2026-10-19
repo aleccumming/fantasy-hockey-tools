@@ -12,7 +12,9 @@ A set of tools for fantasy hockey managers. Currently live:
   of starts) and Spot Starts (ranked by estimated win probability).
 - **Deployment** (`/deployment`) - skaters whose ice time or power-play share in
   their most recent game jumped or dropped against a chosen baseline. Split into
-  Forwards and Defense tabs, 50 players per page.
+  Forwards and Defense tabs, 50 players per page. A Current Roles tab shows
+  each skater's raw TOI, PP TOI and PP share (last game, last 4, or season),
+  sortable by column - pair it with Unowned to scan free agents.
 - **Trade Targets** (`/trades`) - buy-low skaters: strong C-Score but running
   below their own career S%, oiS% and IPP. With a Yahoo league connected it
   shows who owns each one, and "Build Offer" ranks your skaters as 1-for-1

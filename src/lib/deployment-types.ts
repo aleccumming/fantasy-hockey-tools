@@ -53,3 +53,33 @@ export type DeploymentBaseline = (typeof DEPLOYMENT_BASELINES)[number];
 export const DEFAULT_DEPLOYMENT_BASELINE: DeploymentBaseline = "lastSeason";
 
 export type DeploymentBoostsByBaseline = Record<DeploymentBaseline, RankedDeploymentPlayer[]>;
+
+/** Where a player's deployment stands in one window - no baseline, no
+ *  delta. For scanning (e.g. free agents) by raw role, including players a
+ *  change-based list misses because nothing changed lately or they sat out
+ *  the most recent game. */
+export interface DeploymentRolePlayer {
+  name: string;
+  team: string;
+  positions: Position[];
+  gamesPlayed: number;
+  toiPerGame: number;
+  ppToiPerGame: number;
+  /** Same share-of-team-PP-time as DeploymentPlayer.recentPpShare. */
+  ppShare: number;
+}
+
+// Windows the deployment refresh already fetches from NST for its
+// baselines, so roles cost no extra NST requests.
+export const DEPLOYMENT_ROLE_WINDOWS = ["lastGame", "last4Games", "thisSeason"] as const;
+export type DeploymentRoleWindow = (typeof DEPLOYMENT_ROLE_WINDOWS)[number];
+export const DEFAULT_DEPLOYMENT_ROLE_WINDOW: DeploymentRoleWindow = "thisSeason";
+
+export type DeploymentRolesByWindow = Record<DeploymentRoleWindow, DeploymentRolePlayer[]>;
+
+/** What the "deployment" cache row holds. Rows written before roles
+ *  existed are the bare DeploymentBoostsByBaseline record. */
+export interface DeploymentCacheData {
+  baselines: DeploymentBoostsByBaseline;
+  roles: DeploymentRolesByWindow;
+}

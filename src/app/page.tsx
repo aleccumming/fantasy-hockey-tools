@@ -24,7 +24,7 @@ const LIVE_TOOLS = [
     href: "/deployment",
     name: "Deployment",
     description:
-      "Who's recently gotten meaningfully more (or less) trusted ice time and power-play time than their track record - often the earliest sign of a breakout, before the points show up.",
+      "Who's recently gotten meaningfully more (or less) trusted ice time and power-play time than their track record - often the earliest sign of a breakout, before the points show up. Plus every skater's current TOI and PP share, sortable.",
   },
   {
     href: "/trades",

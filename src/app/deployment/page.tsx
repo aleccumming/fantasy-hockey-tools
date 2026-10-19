@@ -15,7 +15,8 @@ export default function DeploymentPage() {
       <p className="mt-4 max-w-2xl text-sm text-ink-dim">
         Who&apos;s recently gotten meaningfully more (or less) trusted ice time and power-play time than their
         established track record - usually the earliest real sign of a fantasy breakout or a role that&apos;s
-        drying up, before the points catch up to it.
+        drying up, before the points catch up to it. Current Roles shows where everyone&apos;s deployment stands
+        right now, for spotting an available player who&apos;s had a big role all along.
       </p>
 
       <div className="mt-6">

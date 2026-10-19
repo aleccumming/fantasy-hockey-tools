@@ -318,6 +318,16 @@ Players' tab bar.
       resets to 1 whenever a tab, filter or baseline changes. Also changed
       the Delta PP Share suffix from "pp" to "%" to match the neighboring
       share columns.
+      Added a Current Roles tab (2026-10-19), per feedback that a
+      change-only list misses an available player who's quietly had strong
+      PP deployment all along (or sat out the last game). Shows raw TOI/gm,
+      PP TOI/gm and PP share over Last Game / Last 4 Games / This Season,
+      sortable by column, with the same F/D, Unowned, team and search
+      filters. Built from windows the refresh already fetches (no extra NST
+      requests) and stored in the same "deployment" cache row, now
+      `{ baselines, roles }` - `getDeploymentBoosts` still reads the old
+      bare-baselines shape and returns `roles: null` until the next
+      refresh. Also fixed `formatToi` printing e.g. "3:60".
 - [x] **Player evaluator + streamer suggester**, merged - live at
       `/skaters`. Full skater pool ranked by C-Score over Last 5 Games /
       Last 10 Games / Season, a built-in player comparison tool, and a

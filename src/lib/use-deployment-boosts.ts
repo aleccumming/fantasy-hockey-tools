@@ -1,10 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import type { DeploymentBoostsByBaseline } from "./deployment-types";
+import type { DeploymentBoostsByBaseline, DeploymentRolesByWindow } from "./deployment-types";
 
 interface DeploymentBoostsResponse {
   baselines: DeploymentBoostsByBaseline;
+  /** Null until the cached row has been refreshed since roles shipped. */
+  roles: DeploymentRolesByWindow | null;
   computedAt: string;
 }
 
@@ -40,6 +42,7 @@ export function useDeploymentBoosts() {
 
   return {
     baselines: data?.baselines ?? null,
+    roles: data?.roles ?? null,
     computedAt: data?.computedAt ?? null,
     error,
     loading: !error && !data,
