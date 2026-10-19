@@ -404,8 +404,17 @@ Players' tab bar.
       night); IR and goalies are selectable but left out of lineup math.
       **Not yet verified against live Yahoo** (no Yahoo login locally) -
       tested with mocked rosters. Check the owner column and an offer in prod.
-      Possible follow-ups: sell-high list (your players running hot on weak
-      process), 2-for-1 offers, schedule-aware need.
+- [ ] **Trade Targets: sell-high list.** The mirror of buy-low: players
+      on YOUR roster whose points are outrunning their process (weak C-Score,
+      running hot vs. career S%/oiS%/IPP) - the pieces to shop while they
+      look good on paper. Likely the same `luckIndex`/process-rank approach
+      flipped, filtered to your team, and usable straight from Build Offer.
+- [ ] **Trade Targets: account for each team's upcoming schedule.**
+      Lineup need and "Fits" are season-level today (every player treated
+      as always available). Weigh the coming weeks' games instead - e.g. a
+      player whose team plays a lot soon is worth more to a team that's
+      thin on those nights. The stored NHL schedule and Drop & Replace's
+      day-by-day matching (`roster-fit.ts`) are the building blocks.
 - Dropped (2026-10-07): **DFS / sports betting guide**. Out of scope - this
       site stays about fantasy hockey only. If it's built, it'll be its own
       separate app. A started shots-on-goal prop model + walk-forward
