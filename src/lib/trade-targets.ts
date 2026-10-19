@@ -82,17 +82,7 @@ export function computeBuyLowCandidates(ranked: RankedSkaterStats[]): BuyLowCand
     .sort((a, b) => a.buyLowScore - b.buyLowScore);
 }
 
-export type TheirFit = "fills-hole" | "adds-depth" | "none";
-
-export interface OfferFit {
-  theirFit: TheirFit;
-  /** The positions of theirs this offer covers (the hole or the thin spots). */
-  coveredPositions: RosterPosition[];
-  /** True when sending this player and receiving the target leaves you
-   *  with more unfilled starting slots than you have today. */
-  costsYouAStarter: boolean;
-  yourUnfilledAfter: RosterPosition[];
-}
+export type Fit = "fills-hole" | "adds-depth" | "none";
 
 export interface TeamNeeds {
   unfilled: RosterPosition[];
@@ -109,44 +99,45 @@ export function computeTeamNeeds(roster: RosterFitPlayer[], slots: RosterSlotCon
   return { unfilled: depth.unfilled, thin };
 }
 
-/** One 1-for-1 offer: you send `offer`, they send `target`. Both rosters
- *  are passed in WITHOUT the player leaving them; `theirNeeds` is
- *  computeTeamNeeds of theirs-without-target (computed once per target,
- *  not per offer). */
-export function evaluateOffer({
-  theirWithoutTarget,
-  theirNeeds,
-  myWithoutOffer,
-  offer,
-  target,
-  slots,
-}: {
-  theirWithoutTarget: RosterFitPlayer[];
-  theirNeeds: TeamNeeds;
-  myWithoutOffer: RosterFitPlayer[];
-  offer: RosterFitPlayer;
-  target: RosterFitPlayer;
-  slots: RosterSlotConfig;
-}): OfferFit {
-  const theirAfter = computePositionalDepth([...theirWithoutTarget, offer], slots);
-  let theirFit: TheirFit = "none";
-  let coveredPositions: RosterPosition[] = [];
-  if (theirAfter.unfilled.length < theirNeeds.unfilled.length) {
-    theirFit = "fills-hole";
-    coveredPositions = theirNeeds.unfilled.filter(
-      (pos) => pos === "UTIL" || offer.positions.includes(pos)
-    );
-  } else {
-    coveredPositions = theirNeeds.thin.filter((pos) => offer.positions.includes(pos));
-    if (coveredPositions.length > 0) theirFit = "adds-depth";
+/** Would adding `candidate` to this roster fill one of its empty starting
+ *  slots, or back up a position with no depth? `needs` is
+ *  computeTeamNeeds(roster) - passed in so it's computed once per roster,
+ *  not once per candidate. */
+export function fitIfAdded(
+  roster: RosterFitPlayer[],
+  needs: TeamNeeds,
+  candidate: RosterFitPlayer,
+  slots: RosterSlotConfig
+): { fit: Fit; positions: RosterPosition[] } {
+  if (computePositionalDepth([...roster, candidate], slots).unfilled.length < needs.unfilled.length) {
+    const positions = needs.unfilled.filter((pos) => pos === "UTIL" || candidate.positions.includes(pos));
+    return { fit: "fills-hole", positions: [...new Set(positions)] };
   }
+  const positions = needs.thin.filter((pos) => candidate.positions.includes(pos));
+  return positions.length > 0 ? { fit: "adds-depth", positions } : { fit: "none", positions: [] };
+}
 
-  const myBefore = computePositionalDepth([...myWithoutOffer, offer], slots);
-  const myAfter = computePositionalDepth([...myWithoutOffer, target], slots);
+export interface TradeSideImpact {
+  before: TeamNeeds;
+  after: TeamNeeds;
+  /** The roster after the trade - the lineup-eligible players only. */
+  rosterAfter: RosterFitPlayer[];
+}
+
+/** One team's lineup before and after a trade of any size. `roster`,
+ *  `outgoing` and `incoming` should already be lineup-eligible skaters
+ *  only (no goalies, no IR); outgoing players are matched by identity. */
+export function evaluateTradeSide(
+  roster: RosterFitPlayer[],
+  outgoing: RosterFitPlayer[],
+  incoming: RosterFitPlayer[],
+  slots: RosterSlotConfig
+): TradeSideImpact {
+  const leaving = new Set(outgoing);
+  const rosterAfter = [...roster.filter((p) => !leaving.has(p)), ...incoming];
   return {
-    theirFit,
-    coveredPositions: [...new Set(coveredPositions)],
-    costsYouAStarter: myAfter.unfilled.length > myBefore.unfilled.length,
-    yourUnfilledAfter: myAfter.unfilled,
+    before: computeTeamNeeds(roster, slots),
+    after: computeTeamNeeds(rosterAfter, slots),
+    rosterAfter,
   };
 }

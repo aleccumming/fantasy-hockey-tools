@@ -391,11 +391,17 @@ Players' tab bar.
       **Build Offer** uses `computePositionalDepth` (`roster-fit.ts`, same
       max matching as Drop & Replace): unfilled starting slots, plus backups
       per position (extra players who could start there if it had more
-      slots). An offer "fills their hole" if it reduces their unfilled slots
-      after losing the target, else "adds depth" at a no-backup position.
-      Also flags if the swap leaves YOUR lineup short. Sorted fit, then
-      your-lineup-safe, then closest P/GP to the target. Season-level only
-      (ignores who plays which night); IR and goalies excluded; 1-for-1 only.
+      slots). Reworked 2026-10-16 from a ranked 1-for-1 list into a deal
+      builder: it opens straight onto both teams' full rosters (target
+      pre-added), click players on either side to build any-size deal, and
+      a Proposed Trade box shows each side, combined P/GP, both teams'
+      lineups after (`evaluateTradeSide`: unfilled slots / no-backup
+      positions, new holes in red) and the roster-size difference. Each
+      roster row not in the deal gets a "Fits them/you" chip (`fitIfAdded`
+      against the other team's post-deal lineup: fills a hole, or depth at
+      a no-backup position) and "Leaves you/them short" if losing that
+      player opens a hole. Season-level only (ignores who plays which
+      night); IR and goalies are selectable but left out of lineup math.
       **Not yet verified against live Yahoo** (no Yahoo login locally) -
       tested with mocked rosters. Check the owner column and an offer in prod.
       Possible follow-ups: sell-high list (your players running hot on weak

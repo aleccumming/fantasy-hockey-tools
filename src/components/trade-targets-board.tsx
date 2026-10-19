@@ -11,14 +11,16 @@ import { playerIdentityKey, playerNameGroupKey } from "@/lib/player-identity-key
 import {
   computeBuyLowCandidates,
   computeTeamNeeds,
-  evaluateOffer,
+  evaluateTradeSide,
+  fitIfAdded,
   luckIndex,
   MIN_GP_FOR_ON_ICE,
   MIN_SHOTS_FOR_SH_PCT,
   type BuyLowCandidate,
-  type OfferFit,
+  type Fit,
+  type TradeSideImpact,
 } from "@/lib/trade-targets";
-import type { RosterSlotConfig } from "@/lib/roster-fit";
+import type { RosterPosition, RosterSlotConfig } from "@/lib/roster-fit";
 import type { EvaluatorWindow } from "@/lib/player-evaluator-service";
 import type { YahooLeagueTeamRoster, YahooRosterPlayer } from "@/lib/yahoo-fantasy-client";
 import type { HeadshotMap } from "@/lib/headshots";
@@ -298,6 +300,7 @@ export function TradeTargetsBoard({ activeLeagueKey }: { activeLeagueKey: string
 
       {selectedTarget && selectedOwner && !selectedOwner.team.isMine && teams && slots && rankedByGroup && (
         <OfferBuilder
+          key={selectedTargetKey}
           target={selectedTarget}
           owner={selectedOwner}
           myTeam={teams.find((t) => t.isMine) ?? null}
@@ -440,7 +443,106 @@ function PlayerCell({
   );
 }
 
-const FIT_ORDER: Record<OfferFit["theirFit"], number> = { "fills-hole": 0, "adds-depth": 1, none: 2 };
+function playerKey(p: YahooRosterPlayer): string {
+  return `${p.name}|${p.team}|${p.positions.join(",")}|${p.isGoalie}`;
+}
+
+function sumPointsPerGame(players: YahooRosterPlayer[], statsIndex: Map<string, RankedSkaterStats>): number {
+  return players.reduce((sum, p) => {
+    const stats = p.isGoalie ? undefined : lookup(statsIndex, p);
+    return sum + (stats ? pointsPerGame(stats) : 0);
+  }, 0);
+}
+
+function FitChip({ fit, positions, who }: { fit: Fit; positions: RosterPosition[]; who: "them" | "you" }) {
+  if (fit === "fills-hole") {
+    return (
+      <span className="whitespace-nowrap rounded bg-rink-green-light px-1.5 py-0.5 text-[11px] font-semibold text-rink-green">
+        Fills {who === "them" ? "their" : "your"} {positions.join("/")}
+      </span>
+    );
+  }
+  if (fit === "adds-depth") {
+    return (
+      <span className="whitespace-nowrap rounded bg-rink-blue-light px-1.5 py-0.5 text-[11px] font-semibold text-rink-blue">
+        {positions.join("/")} depth for {who}
+      </span>
+    );
+  }
+  return null;
+}
+
+/** "Can't fill C, no backup at LW" style summary of one team's lineup after
+ *  the deal, with what changed vs. today called out. */
+function LineupImpactLine({ label, impact }: { label: string; impact: TradeSideImpact }) {
+  const { before, after } = impact;
+  const opened = after.unfilled.length > before.unfilled.length;
+  return (
+    <p className="text-xs text-ink-dim">
+      <span className="font-semibold text-ink">{label}:</span>{" "}
+      {after.unfilled.length > 0 ? (
+        <span className={opened ? "font-semibold text-rink-red" : "text-ink"}>
+          can&apos;t fill {after.unfilled.join(", ")}
+          {opened && " (new hole)"}
+        </span>
+      ) : (
+        <span className={before.unfilled.length > 0 ? "font-semibold text-rink-green" : "text-ink"}>
+          full lineup{before.unfilled.length > 0 && " (fills today's hole)"}
+        </span>
+      )}
+      {after.thin.length > 0 && <> &middot; no backup at {after.thin.join(", ")}</>}
+    </p>
+  );
+}
+
+function DealSide({
+  title,
+  players,
+  statsIndex,
+  emptyText,
+  onRemove,
+}: {
+  title: string;
+  players: YahooRosterPlayer[];
+  statsIndex: Map<string, RankedSkaterStats>;
+  emptyText: string;
+  onRemove: (p: YahooRosterPlayer) => void;
+}) {
+  return (
+    <div className="min-w-0 flex-1">
+      <div className="flex items-baseline justify-between gap-2">
+        <span className="text-[11px] font-bold uppercase tracking-wide text-ink-faint">{title}</span>
+        {players.length > 0 && (
+          <span className="text-xs tabular-nums text-ink-dim" title="Combined points per game">
+            {sumPointsPerGame(players, statsIndex).toFixed(2)} P/GP
+          </span>
+        )}
+      </div>
+      {players.length === 0 ? (
+        <p className="mt-1.5 text-xs text-ink-faint">{emptyText}</p>
+      ) : (
+        <div className="mt-1.5 flex flex-wrap gap-1.5">
+          {players.map((p) => (
+            <span
+              key={playerKey(p)}
+              className="inline-flex items-center gap-1 rounded-full border border-line bg-surface py-0.5 pl-2.5 pr-1 text-xs text-ink"
+            >
+              <span className="font-semibold">{abbreviateFirstName(p.name)}</span>
+              <span className="text-ink-faint">{p.isGoalie ? "G" : p.positions.join("/")}</span>
+              <button
+                onClick={() => onRemove(p)}
+                className="ml-0.5 flex h-4 w-4 items-center justify-center rounded-full text-ink-faint hover:bg-rink-red-light hover:text-rink-red"
+                aria-label={`Remove ${p.name} from the deal`}
+              >
+                &times;
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function OfferBuilder({
   target,
@@ -459,57 +561,68 @@ function OfferBuilder({
   headshots: HeadshotMap;
   onClose: () => void;
 }) {
+  // Remounted per target (keyed by the caller), so the deal starts fresh
+  // with just the target on their side.
+  const [sendKeys, setSendKeys] = useState<Set<string>>(() => new Set());
+  const [getKeys, setGetKeys] = useState<Set<string>>(() => new Set([playerKey(owner.player)]));
+
   const statsIndex = useMemo(
     () => buildIndex(allRanked.map((p) => ({ name: p.name, team: p.team, positions: p.positions, value: p }))),
     [allRanked]
   );
 
-  // Rosters for lineup math: skaters only, IR excluded (they don't start).
-  const theirWithoutTarget = useMemo(
-    () => owner.team.roster.filter((p) => isSkater(p) && p !== owner.player),
-    [owner]
-  );
-  const theirNeeds = useMemo(() => computeTeamNeeds(theirWithoutTarget, slots), [theirWithoutTarget, slots]);
+  const myRoster = useMemo(() => myTeam?.roster ?? [], [myTeam]);
+  const theirRoster = owner.team.roster;
+  const sending = myRoster.filter((p) => sendKeys.has(playerKey(p)));
+  const receiving = theirRoster.filter((p) => getKeys.has(playerKey(p)));
 
-  const targetPpg = pointsPerGame(target);
-  const offers = useMemo(() => {
-    if (!myTeam) return [];
-    const mine = myTeam.roster.filter(isSkater);
-    return mine
-      .map((offer) => {
-        const stats = lookup(statsIndex, offer) ?? null;
-        const fit = evaluateOffer({
-          theirWithoutTarget,
-          theirNeeds,
-          myWithoutOffer: mine.filter((p) => p !== offer),
-          offer,
-          target: owner.player,
-          slots,
-        });
-        return {
-          offer,
-          stats,
-          fit,
-          luck: stats ? luckIndex(stats) : null,
-          ppgGap: stats ? Math.abs(pointsPerGame(stats) - targetPpg) : Infinity,
-        };
-      })
-      .sort((a, b) => {
-        const byFit = FIT_ORDER[a.fit.theirFit] - FIT_ORDER[b.fit.theirFit];
-        if (byFit !== 0) return byFit;
-        if (a.fit.costsYouAStarter !== b.fit.costsYouAStarter) return a.fit.costsYouAStarter ? 1 : -1;
-        // Then closest to the target's points per game - what the other
-        // manager actually sees - so the top rows are realistic offers, not
-        // a superstar for a slumping middle-sixer. Luck stays visible as
-        // the sell-high hint rather than driving the order.
-        return a.ppgGap - b.ppgGap;
-      });
-  }, [myTeam, statsIndex, theirWithoutTarget, theirNeeds, owner, slots, targetPpg]);
+  // Lineup math: skaters only, IR excluded (they don't start).
+  const mySkaters = useMemo(() => myRoster.filter(isSkater), [myRoster]);
+  const theirSkaters = useMemo(() => theirRoster.filter(isSkater), [theirRoster]);
+  const myImpact = evaluateTradeSide(mySkaters, sending.filter(isSkater), receiving.filter(isSkater), slots);
+  const theirImpact = evaluateTradeSide(theirSkaters, receiving.filter(isSkater), sending.filter(isSkater), slots);
+
+  function toggle(setter: typeof setSendKeys, p: YahooRosterPlayer) {
+    setter((prev) => {
+      const next = new Set(prev);
+      const key = playerKey(p);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }
+
+  /** For a player not yet in the deal: what adding them would do for the
+   *  other team's lineup (given the deal so far), and whether losing them
+   *  would leave their own team short. */
+  function fitLabels(p: YahooRosterPlayer, side: "mine" | "theirs") {
+    if (!isSkater(p)) return null;
+    const own = side === "mine" ? myImpact : theirImpact;
+    const other = side === "mine" ? theirImpact : myImpact;
+    const forOther = fitIfAdded(other.rosterAfter, other.after, p, slots);
+    const ownWithout = computeTeamNeeds(
+      own.rosterAfter.filter((x) => x !== p),
+      slots
+    );
+    const opensHole = ownWithout.unfilled.length > own.after.unfilled.length;
+    return (
+      <div className="flex flex-col items-start gap-0.5">
+        <FitChip fit={forOther.fit} positions={forOther.positions} who={side === "mine" ? "them" : "you"} />
+        {opensHole && (
+          <span className="whitespace-nowrap text-[11px] font-semibold text-rink-red">
+            {side === "mine" ? "Leaves you short" : "Leaves them short"}
+          </span>
+        )}
+      </div>
+    );
+  }
+
+  const net = receiving.length - sending.length;
 
   return (
     <div className="mt-4 rounded-md border border-rink-blue bg-surface p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
+        <div className="min-w-0">
           <div className="text-[11px] font-bold uppercase tracking-wide text-ink-faint">Build an offer</div>
           <h2 className="font-display text-xl font-bold uppercase tracking-wide text-ink">
             {target.name} <span className="text-ink-faint">from {owner.team.name}</span>
@@ -520,120 +633,72 @@ function OfferBuilder({
         </button>
       </div>
 
-      <div className="mt-3 text-sm text-ink-dim">
-        Without {abbreviateFirstName(target.name)}, {owner.team.name}{" "}
-        {theirNeeds.unfilled.length > 0 ? (
-          <>
-            can&apos;t fill{" "}
-            <span className="font-semibold text-rink-red">{theirNeeds.unfilled.join(", ")}</span> in their
-            starting lineup
-            {theirNeeds.thin.length > 0 ? " and " : "."}
-          </>
-        ) : null}
-        {theirNeeds.thin.length > 0 ? (
-          <>
-            {theirNeeds.unfilled.length === 0 && "fills every starting slot but "}has no backup at{" "}
-            <span className="font-semibold text-ink">{theirNeeds.thin.join(", ")}</span>.
-          </>
-        ) : theirNeeds.unfilled.length === 0 ? (
-          "is still deep at every position - positional need won't sell this one; lean on value instead."
-        ) : null}
-      </div>
-
       {!myTeam ? (
         <p className="mt-3 text-sm text-ink-dim">Couldn&apos;t find your team in this league.</p>
       ) : (
-        <div className="mt-3 overflow-x-auto rounded-md border border-line">
-          <table className="w-full text-sm" style={{ minWidth: 640 }}>
-            <thead>
-              <tr className="border-b border-line text-left text-[11px] font-semibold uppercase tracking-wide text-ink-dim">
-                <th className="px-2 py-2">You send</th>
-                <th className="px-2 py-2">Their fit</th>
-                <th className="px-2 py-2">Your lineup</th>
-                <th className="px-2 py-2 normal-case" title={`Points per game - ${abbreviateFirstName(target.name)} is at ${targetPpg.toFixed(2)}`}>
-                  P/GP
-                </th>
-                <th className="px-2 py-2" title="C-Score within the player's own position group (F or D)">
-                  C-Score
-                </th>
-                <th className="px-2 py-2" title="Average of S%, oiS% and IPP vs. career baseline - hot players make the best sell-high pieces">
-                  Luck
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {offers.map(({ offer, stats, fit, luck }, i) => (
-                <tr
-                  key={`${offer.name}|${offer.team}|${offer.positions.join(",")}`}
-                  className={`border-b border-stripe last:border-0 ${i % 2 === 1 ? "bg-stripe/60" : ""}`}
-                >
-                  <td className="px-2 py-2">
-                    <PlayerCell player={offer} headshots={headshots} />
-                  </td>
-                  <td className="px-2 py-2 text-xs">
-                    {fit.theirFit === "fills-hole" ? (
-                      <span className="rounded bg-rink-green-light px-1.5 py-0.5 font-semibold text-rink-green">
-                        Fills their {fit.coveredPositions.join("/")} hole
-                      </span>
-                    ) : fit.theirFit === "adds-depth" ? (
-                      <span className="rounded bg-rink-blue-light px-1.5 py-0.5 font-semibold text-rink-blue">
-                        Depth at {fit.coveredPositions.join("/")}
-                      </span>
-                    ) : (
-                      <span className="text-ink-faint">No positional need</span>
-                    )}
-                  </td>
-                  <td className="px-2 py-2 text-xs">
-                    {fit.costsYouAStarter ? (
-                      <span className="font-semibold text-rink-red">
-                        Leaves your {fit.yourUnfilledAfter.join(", ")} empty
-                      </span>
-                    ) : (
-                      <span className="text-ink-dim">Still full</span>
-                    )}
-                  </td>
-                  <td className="px-2 py-2 tabular-nums text-ink">{stats ? pointsPerGame(stats).toFixed(2) : "-"}</td>
-                  <td className="px-2 py-2 tabular-nums text-ink">{stats ? stats.compositeRank.toFixed(1) : "-"}</td>
-                  <td className="px-2 py-2">
-                    <LuckChip index={luck} />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-      <p className="mt-2 text-xs text-ink-faint">
-        1-for-1 offers, sorted by how well they fit {owner.team.name}&apos;s needs, then whether your
-        lineup stays full, then closest to {abbreviateFirstName(target.name)}&apos;s{" "}
-        {targetPpg.toFixed(2)} points per game. A red (hot) Luck chip marks a sell-high piece - the
-        points are outrunning the underlying process, so the player looks better on paper than they are. IR players and goalies
-        are left out of the lineup math. Positional need is season-level - it ignores who plays on which
-        night.
-      </p>
+        <>
+          <div className="mt-3 rounded-md border border-line bg-ice-2/40 p-3">
+            <div className="text-[11px] font-bold uppercase tracking-wide text-ink-faint">Proposed trade</div>
+            <div className="mt-2 flex flex-col gap-3 sm:flex-row">
+              <DealSide
+                title="You send"
+                players={sending}
+                statsIndex={statsIndex}
+                emptyText="Click players on your roster below to add them."
+                onRemove={(p) => toggle(setSendKeys, p)}
+              />
+              <DealSide
+                title="You get"
+                players={receiving}
+                statsIndex={statsIndex}
+                emptyText="Click players on their roster below to add them."
+                onRemove={(p) => toggle(setGetKeys, p)}
+              />
+            </div>
+            <div className="mt-3 space-y-1 border-t border-stripe pt-2">
+              <LineupImpactLine label="Your lineup after" impact={myImpact} />
+              <LineupImpactLine label={`${owner.team.name} after`} impact={theirImpact} />
+              {net !== 0 && (
+                <p className="text-xs text-ink-dim">
+                  {net > 0
+                    ? `You take on ${net} more player${net === 1 ? "" : "s"} than you send - you'll need ${net === 1 ? "an open roster spot" : `${net} open roster spots`} or a drop.`
+                    : `They take on ${-net} more player${net === -1 ? "" : "s"} than they send - they'll need room or a drop.`}
+                </p>
+              )}
+            </div>
+          </div>
 
-      {myTeam && (
-        <div className="mt-5 border-t border-stripe pt-4">
-          <div className="text-[11px] font-bold uppercase tracking-wide text-ink-faint">Both rosters</div>
-          <p className="mt-0.5 text-xs text-ink-dim">
-            For building a bigger deal (2-for-2 and up) by hand.
+          <p className="mt-3 text-xs text-ink-faint">
+            Click players to add or remove them. The Fits column says what adding a player would do for
+            the other team&apos;s lineup (given the deal so far), and flags anyone whose departure leaves
+            their own team short. A red (hot) Luck chip marks a sell-high piece: points outrunning the
+            underlying process. Lineup math is season-level and leaves out IR players and goalies.
           </p>
-          <div className="mt-2 grid gap-4 lg:grid-cols-2">
+
+          <div className="mt-2 grid gap-4 xl:grid-cols-2">
             <RosterPanel
-              title={myTeam.name}
-              roster={myTeam.roster}
+              title={`${myTeam.name} (you)`}
+              roster={myRoster}
               statsIndex={statsIndex}
               headshots={headshots}
+              selectedKeys={sendKeys}
+              onToggle={(p) => toggle(setSendKeys, p)}
+              fitHeader="Fits them"
+              renderFit={(p) => fitLabels(p, "mine")}
             />
             <RosterPanel
               title={owner.team.name}
-              roster={owner.team.roster}
+              roster={theirRoster}
               statsIndex={statsIndex}
               headshots={headshots}
-              highlight={owner.player}
+              selectedKeys={getKeys}
+              onToggle={(p) => toggle(setGetKeys, p)}
+              fitHeader="Fits you"
+              renderFit={(p) => fitLabels(p, "theirs")}
+              highlightKey={playerKey(owner.player)}
             />
           </div>
-        </div>
+        </>
       )}
     </div>
   );
@@ -641,20 +706,29 @@ function OfferBuilder({
 
 const POSITION_ORDER: Record<string, number> = { C: 0, LW: 1, RW: 2, D: 3 };
 
-/** One team's full roster (incl. IR and goalies, unlike the lineup math),
- *  forwards then D then goalies, best P/GP first within each. */
+/** One team's full roster (incl. IR and goalies), forwards then D then
+ *  goalies, best P/GP first within each. Click a row to add/remove that
+ *  player from the deal. */
 function RosterPanel({
   title,
   roster,
   statsIndex,
   headshots,
-  highlight,
+  selectedKeys,
+  onToggle,
+  fitHeader,
+  renderFit,
+  highlightKey,
 }: {
   title: string;
   roster: YahooRosterPlayer[];
   statsIndex: Map<string, RankedSkaterStats>;
   headshots: HeadshotMap;
-  highlight?: YahooRosterPlayer;
+  selectedKeys: Set<string>;
+  onToggle: (p: YahooRosterPlayer) => void;
+  fitHeader: string;
+  renderFit: (p: YahooRosterPlayer) => React.ReactNode;
+  highlightKey?: string;
 }) {
   const rows = roster
     .map((player) => {
@@ -675,51 +749,74 @@ function RosterPanel({
         {title}
       </h3>
       <div className="mt-1.5 overflow-x-auto rounded-md border border-line">
-        <table className="w-full text-sm" style={{ minWidth: 420 }}>
+        <table className="w-full text-sm" style={{ minWidth: 560 }}>
           <thead>
             <tr className="border-b border-line text-left text-[11px] font-semibold uppercase tracking-wide text-ink-dim">
+              <th className="w-8 px-2 py-1.5" />
               <th className="px-2 py-1.5">Player</th>
               <th className="px-2 py-1.5 normal-case">P/GP</th>
               <th className="px-2 py-1.5">C-Score</th>
               <th className="px-2 py-1.5">Luck</th>
+              <th className="px-2 py-1.5">{fitHeader}</th>
             </tr>
           </thead>
           <tbody>
-            {rows.map(({ player, stats, group }, i) => (
-              <tr
-                key={`${player.name}|${player.team}|${player.positions.join(",")}|${player.isGoalie}`}
-                className={`border-b border-stripe last:border-b-0 ${
-                  i > 0 && rows[i - 1].group !== group ? "border-t-2 border-t-line" : ""
-                } ${player === highlight ? "bg-rink-blue-light" : i % 2 === 1 ? "bg-stripe/60" : ""}`}
-              >
-                <td className="px-2 py-1.5">
-                  <div className="flex items-center gap-2">
-                    <PlayerCell
-                      player={{
-                        name: player.name,
-                        team: player.team,
-                        positions: player.isGoalie ? ["G"] : player.positions,
-                      }}
-                      headshots={headshots}
+            {rows.map(({ player, stats, group }, i) => {
+              const key = playerKey(player);
+              const selected = selectedKeys.has(key);
+              return (
+                <tr
+                  key={key}
+                  onClick={() => onToggle(player)}
+                  className={`cursor-pointer border-b border-stripe last:border-b-0 hover:bg-rink-blue-light/60 ${
+                    i > 0 && rows[i - 1].group !== group ? "border-t-2 border-t-line" : ""
+                  } ${selected ? "bg-rink-blue-light" : i % 2 === 1 ? "bg-stripe/60" : ""}`}
+                >
+                  <td className="px-2 py-1.5">
+                    <input
+                      type="checkbox"
+                      checked={selected}
+                      onChange={() => onToggle(player)}
+                      onClick={(e) => e.stopPropagation()}
+                      aria-label={`${selected ? "Remove" : "Add"} ${player.name} ${selected ? "from" : "to"} the deal`}
+                      className="h-4 w-4 cursor-pointer accent-rink-blue"
                     />
-                    {player.isOnIR && (
-                      <span className="shrink-0 rounded bg-rink-red/10 px-1 py-0.5 text-[10px] font-bold text-rink-red">
-                        IR
-                      </span>
+                  </td>
+                  <td className="px-2 py-1.5">
+                    <div className="flex items-center gap-2">
+                      <PlayerCell
+                        player={{
+                          name: player.name,
+                          team: player.team,
+                          positions: player.isGoalie ? ["G"] : player.positions,
+                        }}
+                        headshots={headshots}
+                      />
+                      {player.isOnIR && (
+                        <span className="shrink-0 rounded bg-rink-red/10 px-1 py-0.5 text-[10px] font-bold text-rink-red">
+                          IR
+                        </span>
+                      )}
+                      {key === highlightKey && (
+                        <span className="shrink-0 rounded bg-rink-gold-light px-1 py-0.5 text-[10px] font-bold uppercase text-rink-gold">
+                          Target
+                        </span>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-2 py-1.5 tabular-nums text-ink">{stats ? pointsPerGame(stats).toFixed(2) : "-"}</td>
+                  <td className="px-2 py-1.5 tabular-nums text-ink">{stats ? stats.compositeRank.toFixed(1) : "-"}</td>
+                  <td className="px-2 py-1.5">
+                    {player.isGoalie ? (
+                      <span className="text-xs text-ink-faint">-</span>
+                    ) : (
+                      <LuckChip index={stats ? luckIndex(stats) : null} />
                     )}
-                  </div>
-                </td>
-                <td className="px-2 py-1.5 tabular-nums text-ink">{stats ? pointsPerGame(stats).toFixed(2) : "-"}</td>
-                <td className="px-2 py-1.5 tabular-nums text-ink">{stats ? stats.compositeRank.toFixed(1) : "-"}</td>
-                <td className="px-2 py-1.5">
-                  {player.isGoalie ? (
-                    <span className="text-xs text-ink-faint">-</span>
-                  ) : (
-                    <LuckChip index={stats ? luckIndex(stats) : null} />
-                  )}
-                </td>
-              </tr>
-            ))}
+                  </td>
+                  <td className="px-2 py-1.5">{selected ? null : renderFit(player)}</td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
