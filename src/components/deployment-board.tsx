@@ -48,7 +48,9 @@ const BASELINE_LABELS: Record<DeploymentBaseline, string> = {
 
 const ROLE_WINDOW_LABELS: Record<DeploymentRoleWindow, string> = {
   lastGame: "Last Game",
-  last4Games: "Last 4 Games",
+  last3Games: "Last 3 Games",
+  last5Games: "Last 5 Games",
+  last10Games: "Last 10 Games",
   thisSeason: "This Season",
 };
 

@@ -32,6 +32,7 @@
 import { fetchIndividualStats, currentNstSeason, previousNstSeason, type NstIndividualRow } from "./nst-client";
 import { buildPlayerIdentityMap, lookupPlayerIdentity } from "./player-identity-key";
 import { getNstCached, saveNstCached, type NstCached } from "./nst-data-cache";
+import { DEPLOYMENT_ROLE_WINDOWS } from "./deployment-types";
 import type {
   DeploymentPlayer,
   RankedDeploymentPlayer,
@@ -301,8 +302,8 @@ function computeRoles(rows: SituationRows): DeploymentRolePlayer[] {
 /** What every page request calls - never talks to NST directly. Reads the
  *  DB row the daily cron (or the Refresh button) last wrote; only falls
  *  back to a live fetch if that row has genuinely never been seeded yet.
- *  roles is null for a row written before roles existed, until the next
- *  refresh rewrites it. */
+ *  roles is null for a row written before roles (or the current role
+ *  windows) existed, until the next refresh rewrites it. */
 export async function getDeploymentBoosts(): Promise<
   NstCached<{ baselines: DeploymentBoostsByBaseline; roles: DeploymentRolesByWindow | null }>
 > {
@@ -310,7 +311,12 @@ export async function getDeploymentBoosts(): Promise<
     "deployment",
     refreshDeploymentCache
   );
-  if ("baselines" in data) return { data, updatedAt };
+  if ("baselines" in data) {
+    // A row written before the current set of role windows reads as "no
+    // roles yet" until the next refresh, rather than a window with no rows.
+    const rolesCurrent = data.roles && DEPLOYMENT_ROLE_WINDOWS.every((w) => Array.isArray(data.roles[w]));
+    return { data: { baselines: data.baselines, roles: rolesCurrent ? data.roles : null }, updatedAt };
+  }
   return { data: { baselines: data, roles: null }, updatedAt };
 }
 
@@ -328,10 +334,13 @@ export async function refreshDeploymentCache(): Promise<NstCached<DeploymentCach
     ]).then(([toiRows, ppRows]) => ({ toiRows, ppRows }));
   }
 
-  const [window1, window2, window4, thisSeasonFull, lastSeasonFull] = await Promise.all([
+  const [window1, window2, window3, window4, window5, window10, thisSeasonFull, lastSeasonFull] = await Promise.all([
     fetchGames(1, season, season),
     fetchGames(2, season, season),
+    fetchGames(3, season, season), // roles only
     fetchGames(4, season, season),
+    fetchGames(5, season, season), // roles only
+    fetchGames(10, season, season), // roles only
     fetchGames(null, season, season),
     fetchGames(null, lastSeason, lastSeason),
   ]);
@@ -372,7 +381,9 @@ export async function refreshDeploymentCache(): Promise<NstCached<DeploymentCach
   // most recent game belongs in every one of them.
   const roles: DeploymentRolesByWindow = {
     lastGame: computeRoles(window1),
-    last4Games: computeRoles(window4),
+    last3Games: computeRoles(window3),
+    last5Games: computeRoles(window5),
+    last10Games: computeRoles(window10),
     thisSeason: computeRoles(thisSeasonFull),
   };
 

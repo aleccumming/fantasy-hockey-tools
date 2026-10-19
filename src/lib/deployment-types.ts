@@ -69,9 +69,7 @@ export interface DeploymentRolePlayer {
   ppShare: number;
 }
 
-// Windows the deployment refresh already fetches from NST for its
-// baselines, so roles cost no extra NST requests.
-export const DEPLOYMENT_ROLE_WINDOWS = ["lastGame", "last4Games", "thisSeason"] as const;
+export const DEPLOYMENT_ROLE_WINDOWS = ["lastGame", "last3Games", "last5Games", "last10Games", "thisSeason"] as const;
 export type DeploymentRoleWindow = (typeof DEPLOYMENT_ROLE_WINDOWS)[number];
 export const DEFAULT_DEPLOYMENT_ROLE_WINDOW: DeploymentRoleWindow = "thisSeason";
 
