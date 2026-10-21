@@ -42,6 +42,8 @@ export async function POST(req: NextRequest) {
     const { updatedAt } = await REFRESHERS[id]();
     return NextResponse.json({ refreshed: true, updatedAt: updatedAt.toISOString() });
   } catch (err) {
+    // Logged so prod logs show WHY, not just a bare 502.
+    console.error(`/api/refresh-stats ${id} failed:`, err);
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "Couldn't refresh from Natural Stat Trick" },
       { status: 502 }

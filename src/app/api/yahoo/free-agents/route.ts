@@ -17,6 +17,8 @@ export async function GET(req: NextRequest) {
     if (err instanceof YahooNotConnectedError) {
       return NextResponse.json({ error: "Yahoo account not connected" }, { status: 401 });
     }
+    // Logged so prod logs show WHY, not just a bare 502.
+    console.error("/api/yahoo/free-agents failed:", err);
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "Failed to load Yahoo free agents" },
       { status: 502 }
