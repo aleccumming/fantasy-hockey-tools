@@ -30,7 +30,7 @@
 // gated behind their paid "Frozen Tools" subscription rather than being
 // a scrapeable public page - not pursued further for that reason.)
 import { fetchIndividualStats, currentNstSeason, previousNstSeason, type NstIndividualRow } from "./nst-client";
-import { buildPlayerIdentityMap, lookupPlayerIdentity } from "./player-identity-key";
+import { playerIdentityKey, playerNameGroupKey } from "./player-identity-key";
 import { getNstCached, saveNstCached, type NstCached } from "./nst-data-cache";
 import { DEPLOYMENT_ROLE_WINDOWS } from "./deployment-types";
 import type {
@@ -86,13 +86,18 @@ function toiPerGame(row: NstIndividualRow | undefined): number {
 // group disambiguation (player-identity-key.ts, same scheme headshot
 // lookups and the Yahoo eligibility override already use - this bug class
 // turned out to need the same fix in all three places, not just here).
+// The fallback (a player traded between windows) is name+F/D rather than
+// plain name: a player missing from a window - didn't play in it - must
+// not pick up their same-name teammate's row instead (the VAN Petterssons
+// split on F vs D).
 function byPlayerKey(rows: NstIndividualRow[]): Map<string, NstIndividualRow> {
-  return buildPlayerIdentityMap(
-    rows,
-    (r) => r.name,
-    (r) => r.team,
-    (r) => [r.position]
-  );
+  const map = new Map<string, NstIndividualRow>();
+  for (const r of rows) {
+    map.set(playerIdentityKey(r.name, r.team, [r.position]), r);
+    const fallback = playerNameGroupKey(r.name, [r.position]);
+    if (!map.has(fallback)) map.set(fallback, r);
+  }
+  return map;
 }
 
 function lookupPlayer(
@@ -101,7 +106,7 @@ function lookupPlayer(
   team: string,
   position: string
 ): NstIndividualRow | undefined {
-  return lookupPlayerIdentity(map, name, team, [position]);
+  return map.get(playerIdentityKey(name, team, [position])) ?? map.get(playerNameGroupKey(name, [position]));
 }
 
 /** Isolates a middle stretch of games by subtracting a smaller cumulative
@@ -176,7 +181,12 @@ function teamGamesByTeam(rows: NstIndividualRow[]): Map<string, number> {
  *  user report), and came out to a 26% PP share against the unscaled
  *  full-season denominator vs. a real 67% once scaled to just his own 31
  *  games - 26% doesn't pass the smell test for a top-pairing PP1 forward,
- *  67% does. */
+ *  67% does.
+ *
+ *  Still an estimate - it assumes the team's PP time was spread evenly
+ *  across its games, which can overshoot when a player happened to play
+ *  the PP-heavy ones, so it's capped at 100%. The short role windows use
+ *  the exact teamPpInPlayedGames below instead. */
 function ppShare(
   row: NstIndividualRow | undefined,
   playerGp: number,
@@ -189,7 +199,31 @@ function ppShare(
   if (summedTotal <= 0 || gamesForTeam <= 0) return 0;
   const scaledTeamTotal = (summedTotal * (playerGp / gamesForTeam)) / SKATERS_ON_ICE_DURING_PP;
   if (scaledTeamTotal <= 0) return 0;
-  return row.toi / scaledTeamTotal;
+  return Math.min(1, row.toi / scaledTeamTotal);
+}
+
+/** The exact PP-share denominator for a short window: the team's real PP
+ *  time in just the games this player played, instead of ppShare's
+ *  evenly-spread estimate - over 3 games that estimate was badly off
+ *  (caught live: Wyatt Johnston played only the one DAL game holding most
+ *  of the team's 3-game PP time, and read as 137%). cumulative[i] is the
+ *  last i+1 team games, so differencing neighbours recovers game i on its
+ *  own: the team's PP time in it, and whether the player's GP went up
+ *  (they played it). */
+function teamPpInPlayedGames(cumulative: SituationRows[]): (r: NstIndividualRow) => number {
+  const toiByKey = cumulative.map((w) => byPlayerKey(w.toiRows));
+  const ppTotals = cumulative.map((w) => summedPpToiByTeam(w.ppRows));
+  return (r) => {
+    let total = 0;
+    for (let i = 0; i < cumulative.length; i++) {
+      const gp = lookupPlayer(toiByKey[i], r.name, r.team, r.position)?.gp ?? 0;
+      const prevGp = i > 0 ? (lookupPlayer(toiByKey[i - 1], r.name, r.team, r.position)?.gp ?? 0) : 0;
+      if (gp <= prevGp) continue;
+      const prevTeamPp = i > 0 ? (ppTotals[i - 1].get(r.team) ?? 0) : 0;
+      total += ((ppTotals[i].get(r.team) ?? 0) - prevTeamPp) / SKATERS_ON_ICE_DURING_PP;
+    }
+    return total;
+  };
 }
 
 interface SituationRows {
@@ -277,8 +311,12 @@ function computeDeployment(
 
 /** Every skater who played in the window, at their raw deployment level
  *  there - no baseline floor, since this is for finding who's being used
- *  now, not who changed. */
-function computeRoles(rows: SituationRows): DeploymentRolePlayer[] {
+ *  now, not who changed. exactTeamPp, when given, replaces ppShare's
+ *  estimated denominator (see teamPpInPlayedGames). */
+function computeRoles(
+  rows: SituationRows,
+  exactTeamPp?: (r: NstIndividualRow) => number
+): DeploymentRolePlayer[] {
   const ppByName = byPlayerKey(rows.ppRows);
   const ppTeamTotals = summedPpToiByTeam(rows.ppRows);
   const teamGames = teamGamesByTeam(rows.toiRows);
@@ -287,6 +325,13 @@ function computeRoles(rows: SituationRows): DeploymentRolePlayer[] {
     .filter((r) => r.gp > 0)
     .map((r) => {
       const pp = lookupPlayer(ppByName, r.name, r.team, r.position);
+      let share: number;
+      if (exactTeamPp) {
+        const teamPp = exactTeamPp(r);
+        share = pp && teamPp > 0 ? Math.min(1, pp.toi / teamPp) : 0;
+      } else {
+        share = ppShare(pp, r.gp, ppTeamTotals, teamGames);
+      }
       return {
         name: r.name,
         team: r.team,
@@ -294,7 +339,7 @@ function computeRoles(rows: SituationRows): DeploymentRolePlayer[] {
         gamesPlayed: r.gp,
         toiPerGame: toiPerGame(r),
         ppToiPerGame: toiPerGame(pp),
-        ppShare: ppShare(pp, r.gp, ppTeamTotals, teamGames),
+        ppShare: share,
       };
     });
 }
@@ -378,11 +423,13 @@ export async function refreshDeploymentCache(): Promise<NstCached<DeploymentCach
   };
 
   // Unsubtracted windows - a role is a level, not a comparison, so the
-  // most recent game belongs in every one of them.
+  // most recent game belongs in every one of them. Last 1-5 have every
+  // cumulative window fetched, so their PP share is exact; Last 10 and
+  // This Season keep ppShare's estimate, which evens out over more games.
   const roles: DeploymentRolesByWindow = {
-    lastGame: computeRoles(window1),
-    last3Games: computeRoles(window3),
-    last5Games: computeRoles(window5),
+    lastGame: computeRoles(window1, teamPpInPlayedGames([window1])),
+    last3Games: computeRoles(window3, teamPpInPlayedGames([window1, window2, window3])),
+    last5Games: computeRoles(window5, teamPpInPlayedGames([window1, window2, window3, window4, window5])),
     last10Games: computeRoles(window10),
     thisSeason: computeRoles(thisSeasonFull),
   };
