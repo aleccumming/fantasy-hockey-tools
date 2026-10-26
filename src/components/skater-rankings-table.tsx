@@ -5,6 +5,9 @@ import type { RankedSkaterStats } from "@/lib/streamer-stats";
 import type { HeadshotMap } from "@/lib/headshots";
 import { PlayerHeadshot } from "@/components/player-headshot";
 
+const XG_SOURCE_NOTE =
+  " - Season and Last 5 Games rank by an adjusted xG model (ag_xg_data sheet); other windows use Natural Stat Trick's xG";
+
 /** `shortLabel` drops the "/60" for the rankings table's column headers -
  *  the group header says "per 60" once instead, which lets these columns be
  *  much narrower. `label` (with "/60") is still used where there's room,
@@ -18,10 +21,10 @@ export const METRIC_COLUMNS: {
   { key: "shotsPer60", label: "Shots/60", shortLabel: "Shots", title: "Shots per 60 minutes" },
   { key: "iCFPer60", label: "iCF/60", shortLabel: "iCF", title: "Individual Corsi For per 60" },
   { key: "iSCFPer60", label: "iSCF/60", shortLabel: "iSCF", title: "Individual Scoring Chances For per 60" },
-  { key: "ixGPer60", label: "ixG/60", shortLabel: "ixG", title: "Individual Expected Goals per 60" },
+  { key: "ixGPer60", label: "ixG/60", shortLabel: "ixG", title: `Individual Expected Goals per 60${XG_SOURCE_NOTE}` },
   { key: "oiCFPer60", label: "oiCF/60", shortLabel: "oiCF", title: "On-ice Corsi For per 60" },
   { key: "oiSCFPer60", label: "oiSCF/60", shortLabel: "oiSCF", title: "On-ice Scoring Chances For per 60" },
-  { key: "oixGPer60", label: "oixG/60", shortLabel: "oixG", title: "On-ice Expected Goals For per 60" },
+  { key: "oixGPer60", label: "oixG/60", shortLabel: "oixG", title: `On-ice Expected Goals For per 60${XG_SOURCE_NOTE}` },
 ];
 
 export function formatToi(minutes: number): string {
@@ -40,8 +43,8 @@ export function abbreviateFirstName(name: string): string {
   return `${first[0]}. ${rest.join(" ")}`;
 }
 
-type LuckKey = "shootingPct" | "onIceShPct" | "ipp";
-type BaselineKey = "baselineShootingPct" | "baselineOnIceShPct" | "baselineIpp";
+type LuckKey = "shootingPct" | "onIceShPct" | "ipp" | "onNetPct";
+type BaselineKey = "baselineShootingPct" | "baselineOnIceShPct" | "baselineIpp" | "baselineOnNetPct";
 
 /** Not part of the composite ranking - shown for context on whether a
  *  player's points reflect sustainable process or a hot/cold shooting
@@ -52,7 +55,44 @@ export const LUCK_COLUMNS: { key: LuckKey; baselineKey: BaselineKey; label: stri
   { key: "shootingPct", baselineKey: "baselineShootingPct", label: "S%", title: "Individual shooting percentage" },
   { key: "onIceShPct", baselineKey: "baselineOnIceShPct", label: "oiS%", title: "On-ice shooting percentage" },
   { key: "ipp", baselineKey: "baselineIpp", label: "IPP", title: "Individual Points Percentage - share of on-ice team goals the player got a point on" },
+  { key: "onNetPct", baselineKey: "baselineOnNetPct", label: "Net%", title: "Share of shot attempts that reached the net as shots on goal - low means attempts are getting blocked or missing" },
 ];
+
+/** A luck column's value and baseline, or null when either is missing - the
+ *  stats cache predates a newly added luck stat until its next refresh. */
+export function luckValues(p: RankedSkaterStats, m: (typeof LUCK_COLUMNS)[number]): { value: number; baseline: number } | null {
+  const value = p[m.key] as number | undefined;
+  const baseline = p[m.baselineKey] as number | undefined;
+  if (typeof value !== "number" || typeof baseline !== "number") return null;
+  return { value, baseline };
+}
+
+/** "100.0%" is one character too wide for the luck columns and got clipped;
+ *  IPP hits exactly 100% often in small samples, and nothing is lost since
+ *  100 is the cap. */
+export function formatLuckPct(value: number): string {
+  return `${value >= 100 ? value.toFixed(0) : value.toFixed(1)}%`;
+}
+
+/** Hover text for a luck cell - baseline + gap, and for Net% where the
+ *  attempts that didn't reach the net went. */
+export function luckCellTitle(
+  p: RankedSkaterStats,
+  m: (typeof LUCK_COLUMNS)[number],
+  value: number,
+  baseline: number,
+  windowLabel?: string
+): string {
+  const delta = value - baseline;
+  let title = `Career baseline ${baseline.toFixed(1)}% - ${delta >= 0 ? "+" : ""}${delta.toFixed(1)} pts${
+    windowLabel ? ` vs ${windowLabel}` : ""
+  }`;
+  if (m.key === "onNetPct" && typeof p.blockedPct === "number") {
+    const missed = Math.max(0, 100 - value - p.blockedPct);
+    title += `\nAttempts: ${value.toFixed(1)}% on net, ${p.blockedPct.toFixed(1)}% blocked, ${missed.toFixed(1)}% missed`;
+  }
+  return title;
+}
 
 type BangerKey = "hits" | "blocks" | "pim";
 
@@ -196,6 +236,8 @@ function sortValue(p: RankedSkaterStats, key: SortKey, extraColumns: ExtraColumn
     case "blocks":
     case "pim":
       return p[key];
+    case "onNetPct":
+      return p[key] ?? 0;
     default:
       return p.metricRanks[key];
   }
@@ -227,6 +269,10 @@ interface TableProps {
    *  games-in-range, since "who can play the most this week" is the whole
    *  point there, not just C-Score. */
   initialSortKey?: SortKey;
+  /** What the "#" column shows for a player - e.g. their C-Score rank in
+   *  the whole unfiltered pool, so a filtered list (Unowned) still reads
+   *  "#22" instead of renumbering from 1. Defaults to row position. */
+  rankOf?: (p: RankedSkaterStats) => number;
 }
 
 export function SkaterRankingsTable({
@@ -236,6 +282,7 @@ export function SkaterRankingsTable({
   extraColumns = NO_EXTRA_COLUMNS,
   abbreviateNames = true,
   initialSortKey,
+  rankOf,
 }: TableProps) {
   const minTableWidth =
     FIXED_COLUMNS_PX + PLAYER_MIN_PX + extraColumns.reduce((sum, c) => sum + c.widthPx, 0);
@@ -428,7 +475,7 @@ export function SkaterRankingsTable({
               key={`${p.name}|${p.team}|${p.positions.join(",")}`}
               className={`border-b border-stripe last:border-0 ${i % 2 === 1 ? "bg-stripe/60" : ""}`}
             >
-              <td className="px-1.5 py-2 tabular-nums text-ink-dim">{i + 1}</td>
+              <td className="px-1.5 py-2 tabular-nums text-ink-dim">{rankOf ? rankOf(p) : i + 1}</td>
               <td className="px-1.5 py-2 tabular-nums font-semibold text-ink">{p.compositeRank.toFixed(1)}</td>
               <td className="px-2 py-2">
                 <div className="flex items-center gap-2">
@@ -457,21 +504,15 @@ export function SkaterRankingsTable({
                 </td>
               ))}
               {LUCK_COLUMNS.map((m, colIdx) => {
-                const value = p[m.key];
-                const baseline = p[m.baselineKey];
-                const delta = value - baseline;
-                const sign = delta >= 0 ? "+" : "";
+                const values = luckValues(p, m);
                 return (
                   <td
                     key={m.key}
                     className={`whitespace-nowrap px-1.5 py-2 text-center tabular-nums font-medium text-ink-dim ${colIdx === 0 ? "border-l border-stripe" : ""}`}
-                    style={luckCellStyle(delta)}
-                    title={`Career baseline ${baseline.toFixed(1)}% - ${sign}${delta.toFixed(1)} pts vs ${windowLabel}`}
+                    style={values ? luckCellStyle(values.value - values.baseline) : undefined}
+                    title={values ? luckCellTitle(p, m, values.value, values.baseline, windowLabel) : "Available after the next stats refresh"}
                   >
-                    {/* "100.0%" is one character too wide for these columns
-                        and got clipped; IPP hits exactly 100% often in small
-                        samples, and nothing is lost since 100 is the cap. */}
-                    {value >= 100 ? value.toFixed(0) : value.toFixed(1)}%
+                    {values ? formatLuckPct(values.value) : "-"}
                   </td>
                 );
               })}

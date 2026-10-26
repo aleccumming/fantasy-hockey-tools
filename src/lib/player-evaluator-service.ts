@@ -11,6 +11,7 @@ import { currentNstSeason, baselineSeasonRange, previousNstSeason, seasonRangeSp
 import { fetchSkaterWindow, toSkaterRateStats, type SkaterWindowRow } from "./skater-window";
 import { dedupePlayersAcrossSources, playerNameGroupKey } from "./player-identity-key";
 import { getNstCached, saveNstCached, type NstCached } from "./nst-data-cache";
+import { fetchSheetXgRanks, type SheetXgRanks } from "./sheet-xg";
 
 export type EvaluatorWindow = "last5" | "last10" | "season" | "lastSeason";
 
@@ -66,7 +67,8 @@ function scaledMinToi(rows: Map<string, SkaterWindowRow>, window: EvaluatorWindo
 function buildStats(
   rows: Map<string, SkaterWindowRow>,
   baselineRows: Map<string, SkaterWindowRow>,
-  minToi: number
+  minToi: number,
+  sheetXgRanks?: SheetXgRanks
 ): SkaterRateStats[] {
   // Name + F/D, not team: the multi-season baseline can list a since-traded
   // player under a different team, but a collision pair (split on F vs D)
@@ -79,7 +81,10 @@ function buildStats(
   const stats: SkaterRateStats[] = [];
   for (const row of rows.values()) {
     if (row.toi < minToi) continue;
-    stats.push(toSkaterRateStats(row, baselineByNameGroup.get(playerNameGroupKey(row.name, [row.position]))));
+    const key = playerNameGroupKey(row.name, [row.position]);
+    const stat = toSkaterRateStats(row, baselineByNameGroup.get(key));
+    const sheetXgRank = sheetXgRanks?.get(key);
+    stats.push(sheetXgRank ? { ...stat, sheetXgRank } : stat);
   }
   return stats;
 }
@@ -101,7 +106,15 @@ export async function refreshPlayerEvaluatorCache(): Promise<NstCached<PlayerEva
   // mostly made of the exact same season being displayed.
   const lastSeasonBaselineRange = seasonRangeSpanning(previousNstSeason(lastSeason));
 
-  const [last5Rows, last10Rows, seasonRows, baselineRows, lastSeasonRows, lastSeasonBaselineRows] =
+  // Season and Last 5 rank ixG/oixG by the xG sheet's model (see
+  // sheet-xg.ts). If the sheet can't be read, those windows fall back to
+  // NST's xG for this refresh rather than failing the whole refresh.
+  const sheetXgPromise = fetchSheetXgRanks().catch((err) => {
+    console.error("xG sheet fetch failed, using NST xG:", err);
+    return null;
+  });
+
+  const [last5Rows, last10Rows, seasonRows, baselineRows, lastSeasonRows, lastSeasonBaselineRows, sheetXg] =
     await Promise.all([
       fetchSkaterWindow({
         fromSeason: season,
@@ -129,12 +142,13 @@ export async function refreshPlayerEvaluatorCache(): Promise<NstCached<PlayerEva
         situation: "all",
       }),
       fetchSkaterWindow({ ...lastSeasonBaselineRange, gameRange: { type: "none" }, situation: "all" }),
+      sheetXgPromise,
     ]);
 
   const data: PlayerEvaluatorStats = {
-    last5: buildStats(last5Rows, baselineRows, scaledMinToi(last5Rows, "last5")),
+    last5: buildStats(last5Rows, baselineRows, scaledMinToi(last5Rows, "last5"), sheetXg?.last5),
     last10: buildStats(last10Rows, baselineRows, scaledMinToi(last10Rows, "last10")),
-    season: buildStats(seasonRows, baselineRows, scaledMinToi(seasonRows, "season")),
+    season: buildStats(seasonRows, baselineRows, scaledMinToi(seasonRows, "season"), sheetXg?.season),
     lastSeason: buildStats(lastSeasonRows, lastSeasonBaselineRows, scaledMinToi(lastSeasonRows, "lastSeason")),
   };
 

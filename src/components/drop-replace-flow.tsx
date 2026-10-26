@@ -174,6 +174,20 @@ export function DropReplaceFlow({
   const byGroup = useMemo(() => computeCompositeRankingsByGroup(statSource), [statSource]);
   const allRanked = useMemo(() => [...byGroup.forwards, ...byGroup.defense], [byGroup]);
   const byName = useMemo(() => new Map(allRanked.map((p) => [p.name, p])), [allRanked]);
+  // "#" shows each candidate's C-Score rank among ALL forwards/D in the
+  // window, not their position in the filtered free-agent list - same as
+  // Skaters' Unowned view. Keyed by name + F/D since candidates are copies
+  // (Yahoo's team/eligibility overlaid), not the ranked objects themselves.
+  const overallRankByKey = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const pool of [byGroup.forwards, byGroup.defense]) {
+      pool.forEach((p, i) => {
+        const key = playerNameGroupKey(p.name, p.positions);
+        if (!map.has(key)) map.set(key, i + 1);
+      });
+    }
+    return map;
+  }, [byGroup]);
 
   // The roster picker always shows all 14 real roster players, even ones
   // currently missing from the live last-5-games pool (hurt, scratched, a
@@ -641,6 +655,7 @@ export function DropReplaceFlow({
                 headshots={headshots}
                 windowLabel={WINDOW_LABEL}
                 extraColumns={extraColumns}
+                rankOf={(p) => overallRankByKey.get(playerNameGroupKey(p.name, p.positions)) ?? 0}
               />
 
               {results.length === 0 && (

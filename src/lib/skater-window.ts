@@ -17,6 +17,7 @@ export interface SkaterWindowRow {
   toi: number;
   shots: number;
   icf: number;
+  iff: number;
   iscf: number;
   ixg: number;
   shPct: number;
@@ -56,6 +57,7 @@ export async function fetchSkaterWindow(opts: NstQueryOptions): Promise<Map<stri
       toi: ind.toi,
       shots: ind.shots,
       icf: ind.icf,
+      iff: ind.iff,
       iscf: ind.iscf,
       ixg: ind.ixg,
       shPct: ind.shPct,
@@ -75,6 +77,12 @@ export async function fetchSkaterWindow(opts: NstQueryOptions): Promise<Map<stri
 function toPer60(total: number, toiMinutes: number): number {
   if (toiMinutes <= 0) return 0;
   return total / (toiMinutes / 60);
+}
+
+/** Share of a player's shot attempts (iCF) that `part` makes up, as a
+ *  percentage - 0 with no attempts, same as NST reports SH% with no shots. */
+function shareOfAttempts(part: number, icf: number): number {
+  return icf > 0 ? (part / icf) * 100 : 0;
 }
 
 /** Builds a SkaterRateStats-shaped record from one window's row plus a
@@ -106,10 +114,13 @@ export function toSkaterRateStats(
     shootingPct: row.shPct,
     onIceShPct: row.onIceShPct,
     ipp: row.ipp,
+    onNetPct: shareOfAttempts(row.shots, row.icf),
+    blockedPct: shareOfAttempts(row.icf - row.iff, row.icf),
     // Falls back to the row's own value (no hot/cold signal) if a player
     // has no baseline row for some reason, rather than crashing.
     baselineShootingPct: baseline?.shPct ?? row.shPct,
     baselineOnIceShPct: baseline?.onIceShPct ?? row.onIceShPct,
     baselineIpp: baseline?.ipp ?? row.ipp,
+    baselineOnNetPct: baseline ? shareOfAttempts(baseline.shots, baseline.icf) : shareOfAttempts(row.shots, row.icf),
   };
 }

@@ -37,13 +37,26 @@ export interface SkaterRateStats {
   shootingPct: number;
   onIceShPct: number;
   ipp: number;
-  /** Career baseline for the same three numbers - what "normal" for this
-   *  player looks like, so the recent-window value can be read as running
-   *  hot or cold relative to their own established level rather than in
+  /** Share of shot attempts (iCF) that reached the net as shots on goal -
+   *  the rest were blocked or missed. Shots on goal are what count in
+   *  fantasy, so a dip here vs. baseline means attempts are being wasted,
+   *  which tends to bounce back. `blockedPct` is the blocked share of
+   *  attempts (missed = 100 - onNetPct - blockedPct). */
+  onNetPct: number;
+  blockedPct: number;
+  /** Career baseline for the same numbers - what "normal" for this player
+   *  looks like, so the recent-window value can be read as running hot or
+   *  cold relative to their own established level rather than in
    *  isolation. */
   baselineShootingPct: number;
   baselineOnIceShPct: number;
   baselineIpp: number;
+  baselineOnNetPct: number;
+  /** The xG sheet's ranks for this player (see sheet-xg.ts), present only
+   *  for windows the sheet covers. When any player in a pool has one,
+   *  ixG/oixG are ranked by the sheet's order instead of the per-60 values
+   *  above. */
+  sheetXgRank?: { ixG: number; oixG: number };
 }
 
 const METRICS = [
@@ -57,6 +70,26 @@ const METRICS = [
 ] as const;
 
 type MetricKey = (typeof METRICS)[number];
+
+const SHEET_XG_METRICS: Partial<Record<MetricKey, "ixG" | "oixG">> = { ixGPer60: "ixG", oixGPer60: "oixG" };
+
+/** Best-first order for one metric. For the xG metrics, a pool with sheet
+ *  ranks uses the sheet's order - players the sheet doesn't list (under its
+ *  TOI floor, or a name that didn't match) go after everyone it does, in
+ *  NST xG order among themselves. */
+function compareForMetric(metric: MetricKey, useSheet: boolean) {
+  const sheetKey = SHEET_XG_METRICS[metric];
+  return (a: SkaterRateStats, b: SkaterRateStats) => {
+    if (useSheet && sheetKey) {
+      const ra = a.sheetXgRank?.[sheetKey];
+      const rb = b.sheetXgRank?.[sheetKey];
+      if (ra !== undefined && rb !== undefined) return ra - rb;
+      if (ra !== undefined) return -1;
+      if (rb !== undefined) return 1;
+    }
+    return b[metric] - a[metric];
+  };
+}
 
 export interface RankedSkaterStats extends SkaterRateStats {
   /** This player's rank (1 = best) within the given pool, for each metric. */
@@ -76,9 +109,10 @@ export interface RankedSkaterStats extends SkaterRateStats {
 export function computeCompositeRankings(stats: SkaterRateStats[]): RankedSkaterStats[] {
   if (stats.length === 0) return [];
 
+  const useSheet = stats.some((s) => s.sheetXgRank);
   const ranksByMetric = new Map<MetricKey, Map<SkaterRateStats, number>>();
   for (const metric of METRICS) {
-    const sorted = [...stats].sort((a, b) => b[metric] - a[metric]);
+    const sorted = [...stats].sort(compareForMetric(metric, useSheet));
     const ranks = new Map<SkaterRateStats, number>();
     sorted.forEach((s, i) => ranks.set(s, i + 1));
     ranksByMetric.set(metric, ranks);

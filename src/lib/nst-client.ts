@@ -49,6 +49,9 @@ export interface NstIndividualRow extends NstRowBase {
   shPct: number;
   ixg: number;
   icf: number;
+  /** Unblocked attempts (on goal + missed) - with icf and shots, splits
+   *  attempts that didn't reach the net into blocked vs missed. */
+  iff: number;
   iscf: number;
   // "Bangers" category totals (categories-league scoring, not points-league
   // value) - real totals over the queried window, same as goals/assists.
@@ -227,6 +230,7 @@ function parseIndividualRow(cells: string[]): NstIndividualRow | null {
     shPct: Number(cells[13]) || 0,
     ixg: Number(cells[14]) || 0,
     icf: Number(cells[15]) || 0,
+    iff: Number(cells[16]) || 0,
     iscf: Number(cells[17]) || 0,
     pim: Number(cells[21]) || 0,
     hits: Number(cells[29]) || 0,

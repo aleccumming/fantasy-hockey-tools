@@ -141,6 +141,12 @@ export function PlayerComparisonPanel({
             <StatRow label="S%" left={left} right={right} value={(s) => `${s.shootingPct.toFixed(1)}%`} />
             <StatRow label="oiS%" left={left} right={right} value={(s) => `${s.onIceShPct.toFixed(1)}%`} />
             <StatRow label="IPP" left={left} right={right} value={(s) => `${s.ipp.toFixed(1)}%`} />
+            <StatRow
+              label="Net%"
+              left={left}
+              right={right}
+              value={(s) => (typeof s.onNetPct === "number" ? `${s.onNetPct.toFixed(1)}%` : "-")}
+            />
             {METRIC_COLUMNS.map((m) => (
               <StatRow
                 key={m.key}

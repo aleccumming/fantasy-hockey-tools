@@ -87,6 +87,11 @@ export function PlayerEvaluatorBoard({ activeLeagueKey }: { activeLeagueKey: str
     return computeCompositeRankingsByGroup(corrected);
   }, [statSource, yahooEligibilityByName]);
   const ranked = group === "F" ? byGroup.forwards : byGroup.defense;
+  // "#" shows each player's C-Score rank among ALL forwards/D in the window,
+  // so filters (Unowned, team, position...) don't renumber from 1 - a free
+  // agent who's 22nd overall reads #22. Filtering keeps the same objects,
+  // so identity lookup works.
+  const overallRank = useMemo(() => new Map(ranked.map((p, i) => [p, i + 1])), [ranked]);
 
   const filtered = useMemo(() => {
     const query = nameQuery.trim().toLowerCase();
@@ -451,6 +456,7 @@ export function PlayerEvaluatorBoard({ activeLeagueKey }: { activeLeagueKey: str
             ranked={filtered}
             headshots={headshots}
             windowLabel={WINDOW_TABS.find((w) => w.key === windowKey)!.windowLabel}
+            rankOf={(p) => overallRank.get(p) ?? 0}
           />
 
           {filtered.length === 0 && (

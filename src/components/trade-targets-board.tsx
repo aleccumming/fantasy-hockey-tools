@@ -30,7 +30,10 @@ import {
   LUCK_COLUMNS,
   LuckLegend,
   abbreviateFirstName,
+  formatLuckPct,
   luckCellStyle,
+  luckCellTitle,
+  luckValues,
   RINK_BLUE_RGB,
   RINK_RED_RGB,
 } from "@/components/skater-rankings-table";
@@ -363,15 +366,15 @@ export function TradeTargetsBoard({ activeLeagueKey }: { activeLeagueKey: string
                     {p.compositeRank.toFixed(1)} <span className="text-xs text-ink-faint">#{p.processRank}</span>
                   </td>
                   {LUCK_COLUMNS.map((m) => {
-                    const delta = p[m.key] - p[m.baselineKey];
+                    const values = luckValues(p, m);
                     return (
                       <td
                         key={m.key}
                         className="whitespace-nowrap px-2 py-2 text-center tabular-nums font-medium text-ink-dim"
-                        style={luckCellStyle(delta)}
-                        title={`Career baseline ${p[m.baselineKey].toFixed(1)}% - ${delta >= 0 ? "+" : ""}${delta.toFixed(1)} pts`}
+                        style={values ? luckCellStyle(values.value - values.baseline) : undefined}
+                        title={values ? luckCellTitle(p, m, values.value, values.baseline) : "Available after the next stats refresh"}
                       >
-                        {p[m.key] >= 100 ? p[m.key].toFixed(0) : p[m.key].toFixed(1)}%
+                        {values ? formatLuckPct(values.value) : "-"}
                       </td>
                     );
                   })}
