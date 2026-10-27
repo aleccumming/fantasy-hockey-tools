@@ -5,7 +5,12 @@ export async function GET() {
   try {
     const { data, updatedAt } = await getDeploymentBoosts();
     // updatedAt is when NST was last pulled, not this request's time.
-    return NextResponse.json({ baselines: data.baselines, roles: data.roles, computedAt: updatedAt.toISOString() });
+    return NextResponse.json({
+      baselines: data.baselines,
+      roles: data.roles,
+      lastGame: data.lastGame,
+      computedAt: updatedAt.toISOString(),
+    });
   } catch (err) {
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "Failed to load deployment boosts" },

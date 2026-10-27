@@ -53,6 +53,9 @@ export interface NstIndividualRow extends NstRowBase {
    *  attempts that didn't reach the net into blocked vs missed. */
   iff: number;
   iscf: number;
+  /** High-danger attempts - column 18, verified live against the header
+   *  row (right after iSCF, and never above it in real rows). */
+  ihdcf: number;
   // "Bangers" category totals (categories-league scoring, not points-league
   // value) - real totals over the queried window, same as goals/assists.
   // Column positions confirmed live against NST's actual response, not
@@ -66,9 +69,20 @@ export interface NstIndividualRow extends NstRowBase {
 
 export interface NstOnIceRow extends NstRowBase {
   cf: number;
+  ca: number;
+  sf: number;
+  sa: number;
+  gf: number;
+  ga: number;
   scf: number;
+  sca: number;
+  hdcf: number;
+  hdca: number;
   xgf: number;
+  xga: number;
   onIceShPct: number;
+  ozStarts: number;
+  dzStarts: number;
 }
 
 export interface NstQueryOptions {
@@ -232,6 +246,7 @@ function parseIndividualRow(cells: string[]): NstIndividualRow | null {
     icf: Number(cells[15]) || 0,
     iff: Number(cells[16]) || 0,
     iscf: Number(cells[17]) || 0,
+    ihdcf: Number(cells[18]) || 0,
     pim: Number(cells[21]) || 0,
     hits: Number(cells[29]) || 0,
     blocks: Number(cells[31]) || 0,
@@ -247,9 +262,22 @@ function parseOnIceRow(cells: string[]): NstOnIceRow | null {
     gp: Number(cells[4]) || 0,
     toi: Number(cells[5]) || 0,
     cf: Number(cells[6]) || 0,
+    ca: Number(cells[7]) || 0,
+    sf: Number(cells[12]) || 0,
+    sa: Number(cells[13]) || 0,
+    gf: Number(cells[15]) || 0,
+    ga: Number(cells[16]) || 0,
     scf: Number(cells[21]) || 0,
+    sca: Number(cells[22]) || 0,
+    hdcf: Number(cells[24]) || 0,
+    hdca: Number(cells[25]) || 0,
     xgf: Number(cells[18]) || 0,
+    xga: Number(cells[19]) || 0,
     onIceShPct: Number(cells[42]) || 0,
+    // Faceoff zone starts (on-the-fly starts at 48 excluded) - columns
+    // 45/47 verified live against the header row, same as everything above.
+    ozStarts: Number(cells[45]) || 0,
+    dzStarts: Number(cells[47]) || 0,
   };
 }
 

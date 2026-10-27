@@ -75,9 +75,58 @@ export const DEFAULT_DEPLOYMENT_ROLE_WINDOW: DeploymentRoleWindow = "thisSeason"
 
 export type DeploymentRolesByWindow = Record<DeploymentRoleWindow, DeploymentRolePlayer[]>;
 
+/** A skater's on-ice results at 5v5 in one game - for and against while
+ *  they were out there. 5v5 rather than all situations so a PP1 role's
+ *  power-play shifts don't inflate the "for" side. */
+export interface DeploymentOnIceLine {
+  toi: number;
+  cf: number;
+  ca: number;
+  sf: number;
+  sa: number;
+  gf: number;
+  ga: number;
+  xgf: number;
+  xga: number;
+  scf: number;
+  sca: number;
+  hdcf: number;
+  hdca: number;
+  ozStarts: number;
+  dzStarts: number;
+}
+
+/** One skater's raw box score from their team's most recent game - what
+ *  they actually did with a new role, without a Last 5 window diluting it
+ *  with games played under the old one. Totals, not per-game rates. */
+export interface DeploymentGameLine {
+  name: string;
+  team: string;
+  positions: Position[];
+  toi: number;
+  ppToi: number;
+  goals: number;
+  assists: number;
+  ppGoals: number;
+  ppAssists: number;
+  shots: number;
+  icf: number;
+  iff: number;
+  iscf: number;
+  ihdcf: number;
+  ixg: number;
+  hits: number;
+  blocks: number;
+  pim: number;
+  /** Null if they had no 5v5 time in the game. */
+  onIce5v5: DeploymentOnIceLine | null;
+}
+
 /** What the "deployment" cache row holds. Rows written before roles
- *  existed are the bare DeploymentBoostsByBaseline record. */
+ *  existed are the bare DeploymentBoostsByBaseline record; rows written
+ *  before last-game lines existed have no lastGame. */
 export interface DeploymentCacheData {
   baselines: DeploymentBoostsByBaseline;
   roles: DeploymentRolesByWindow;
+  lastGame?: DeploymentGameLine[];
 }

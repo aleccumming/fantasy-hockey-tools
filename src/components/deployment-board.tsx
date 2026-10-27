@@ -1,13 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { useDeploymentBoosts } from "@/lib/use-deployment-boosts";
 import { useYahooPlayerEligibility } from "@/lib/use-yahoo-player-eligibility";
 import { applyEligibilityOverrides } from "@/lib/apply-eligibility-overrides";
 import { useHeadshots } from "@/lib/use-headshots";
 import { useMyRoster } from "@/lib/use-my-roster";
 import { useYahooFreeAgents } from "@/lib/use-yahoo-free-agents";
-import { playerNameGroupKey } from "@/lib/player-identity-key";
+import { buildPlayerIdentityMap, lookupPlayerIdentity, playerNameGroupKey } from "@/lib/player-identity-key";
 import { PlayerHeadshot } from "@/components/player-headshot";
 import { abbreviateFirstName } from "@/components/skater-rankings-table";
 import { TeamMultiSelect } from "@/components/team-multi-select";
@@ -21,6 +21,8 @@ import {
   type DeploymentBaseline,
   type DeploymentRoleWindow,
   type DeploymentRolePlayer,
+  type DeploymentGameLine,
+  type DeploymentOnIceLine,
   type RankedDeploymentPlayer,
 } from "@/lib/deployment-types";
 import type { Position } from "@/lib/types";
@@ -34,6 +36,11 @@ type Direction = "boosts" | "drops";
 type RoleSort = "toi" | "ppToi" | "ppShare" | "gp";
 type OwnershipFilter = "all" | "unowned";
 type SkaterGroup = "F" | "D";
+
+type GameLineState =
+  | { status: "played"; line: DeploymentGameLine }
+  | { status: "didNotPlay" }
+  | { status: "notLoaded" };
 
 const SORTED_TEAMS = [...NHL_TEAMS].sort((a, b) => a.localeCompare(b));
 
@@ -111,7 +118,7 @@ function shareDeltaColor(share: number): string {
 }
 
 export function DeploymentBoard({ activeLeagueKey }: { activeLeagueKey: string | null }) {
-  const { baselines, roles, computedAt, error, loading, reload } = useDeploymentBoosts();
+  const { baselines, roles, lastGame, computedAt, error, loading, reload } = useDeploymentBoosts();
   const { byName: yahooEligibilityByName } = useYahooPlayerEligibility();
   const headshots = useHeadshots();
   const { roster } = useMyRoster();
@@ -126,6 +133,8 @@ export function DeploymentBoard({ activeLeagueKey }: { activeLeagueKey: string |
   const [teamFilters, setTeamFilters] = useState<Set<string>>(new Set());
   const [nameQuery, setNameQuery] = useState("");
   const [page, setPage] = useState(1);
+  // rowKey of the player whose last-game box score is open, if any.
+  const [expandedKey, setExpandedKey] = useState<string | null>(null);
 
   const players = baselines?.[baseline] ?? null;
   const rolePlayers = roles?.[roleWindow] ?? null;
@@ -138,6 +147,28 @@ export function DeploymentBoard({ activeLeagueKey }: { activeLeagueKey: string |
     () => applyEligibilityOverrides(rolePlayers ?? [], yahooEligibilityByName),
     [rolePlayers, yahooEligibilityByName]
   );
+
+  // Same overrides as the table rows, so a looked-up row's (possibly
+  // Yahoo-corrected) team/positions match its game line's.
+  const lastGameByPlayer = useMemo(() => {
+    if (!lastGame) return null;
+    return buildPlayerIdentityMap(
+      applyEligibilityOverrides(lastGame, yahooEligibilityByName),
+      (l) => l.name,
+      (l) => l.team,
+      (l) => l.positions
+    );
+  }, [lastGame, yahooEligibilityByName]);
+
+  function gameLineFor(p: { name: string; team: string; positions: Position[] }): GameLineState {
+    if (!lastGameByPlayer) return { status: "notLoaded" };
+    const line = lookupPlayerIdentity(lastGameByPlayer, p.name, p.team, p.positions);
+    return line ? { status: "played", line } : { status: "didNotPlay" };
+  }
+
+  function toggleExpanded(key: string) {
+    setExpandedKey((k) => (k === key ? null : key));
+  }
 
   // Shared by both views.
   const matchesFilters = useMemo(() => {
@@ -238,7 +269,8 @@ export function DeploymentBoard({ activeLeagueKey }: { activeLeagueKey: string |
           <>
             Where each skater&apos;s deployment stands right now, not how it changed - for spotting an available
             player who&apos;s been getting big minutes or PP1 time all along. Click a column to sort, and pair it with
-            Unowned to scan free agents. PP Share is the same share-of-team-PP-time used under Changes.
+            Unowned to scan free agents. PP Share is the same share-of-team-PP-time used under Changes. Click a
+            player to see their box score from their team&apos;s last game.
           </>
         ) : (
           <>
@@ -250,7 +282,8 @@ export function DeploymentBoard({ activeLeagueKey }: { activeLeagueKey: string |
             few penalties gives everyone low PP minutes regardless of unit, but a true PP1 player still claims the
             same large slice of whatever PP time existed. Only ice time is tracked here, not linemate identity
             specifically - no free source publishes real-time line combinations, but a genuine role change almost
-            always comes with better linemates too.
+            always comes with better linemates too. Click a player to see what they actually did with that last
+            game&apos;s ice time - their full box score, not diluted by games under the old role.
           </>
         )}
         <div className="mt-1.5">
@@ -411,9 +444,22 @@ export function DeploymentBoard({ activeLeagueKey }: { activeLeagueKey: string |
               </tr>
             </thead>
             <tbody>
-              {pagedRoles.map((p, i) => (
-                <RoleRow key={rowKey(p)} rank={(clampedPage - 1) * PAGE_SIZE + i + 1} player={p} headshots={headshots} />
-              ))}
+              {pagedRoles.map((p, i) => {
+                const key = rowKey(p);
+                const rank = (clampedPage - 1) * PAGE_SIZE + i + 1;
+                return (
+                  <Fragment key={key}>
+                    <RoleRow
+                      rank={rank}
+                      player={p}
+                      headshots={headshots}
+                      expanded={expandedKey === key}
+                      onToggle={() => toggleExpanded(key)}
+                    />
+                    {expandedKey === key && <GameLineRow rank={rank} colSpan={6} state={gameLineFor(p)} />}
+                  </Fragment>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -467,9 +513,22 @@ export function DeploymentBoard({ activeLeagueKey }: { activeLeagueKey: string |
             </tr>
           </thead>
           <tbody>
-            {paged.map((p, i) => (
-              <Row key={rowKey(p)} rank={(clampedPage - 1) * PAGE_SIZE + i + 1} player={p} headshots={headshots} />
-            ))}
+            {paged.map((p, i) => {
+              const key = rowKey(p);
+              const rank = (clampedPage - 1) * PAGE_SIZE + i + 1;
+              return (
+                <Fragment key={key}>
+                  <Row
+                    rank={rank}
+                    player={p}
+                    headshots={headshots}
+                    expanded={expandedKey === key}
+                    onToggle={() => toggleExpanded(key)}
+                  />
+                  {expandedKey === key && <GameLineRow rank={rank} colSpan={9} state={gameLineFor(p)} />}
+                </Fragment>
+              );
+            })}
           </tbody>
         </table>
       </div>
@@ -511,13 +570,22 @@ function Row({
   rank,
   player,
   headshots,
+  expanded,
+  onToggle,
 }: {
   rank: number;
   player: RankedDeploymentPlayer;
   headshots: ReturnType<typeof useHeadshots>;
+  expanded: boolean;
+  onToggle: () => void;
 }) {
   return (
-    <tr className={`border-b border-stripe last:border-0 ${rank % 2 === 0 ? "bg-stripe/60" : ""}`}>
+    <tr
+      onClick={onToggle}
+      aria-expanded={expanded}
+      title="Show last game's box score"
+      className={`cursor-pointer border-b border-stripe last:border-0 hover:bg-rink-blue-light/60 ${rank % 2 === 0 ? "bg-stripe/60" : ""}`}
+    >
       <td className="px-3 py-2 tabular-nums text-ink-dim">{rank}</td>
       <td className="px-3 py-2">
         <div className="flex items-center gap-2.5">
@@ -525,6 +593,7 @@ function Row({
           <div className="min-w-0">
             <div className="truncate font-semibold text-ink" title={player.name}>
               {abbreviateFirstName(player.name)}
+              <span className="ml-1 text-[10px] text-ink-faint">{expanded ? "▾" : "▸"}</span>
             </div>
             <div className="truncate text-xs text-ink-faint">
               {player.positions.join("/")} - {player.team}
@@ -588,13 +657,22 @@ function RoleRow({
   rank,
   player,
   headshots,
+  expanded,
+  onToggle,
 }: {
   rank: number;
   player: DeploymentRolePlayer;
   headshots: ReturnType<typeof useHeadshots>;
+  expanded: boolean;
+  onToggle: () => void;
 }) {
   return (
-    <tr className={`border-b border-stripe last:border-0 ${rank % 2 === 0 ? "bg-stripe/60" : ""}`}>
+    <tr
+      onClick={onToggle}
+      aria-expanded={expanded}
+      title="Show last game's box score"
+      className={`cursor-pointer border-b border-stripe last:border-0 hover:bg-rink-blue-light/60 ${rank % 2 === 0 ? "bg-stripe/60" : ""}`}
+    >
       <td className="px-3 py-2 tabular-nums text-ink-dim">{rank}</td>
       <td className="px-3 py-2">
         <div className="flex items-center gap-2.5">
@@ -602,6 +680,7 @@ function RoleRow({
           <div className="min-w-0">
             <div className="truncate font-semibold text-ink" title={player.name}>
               {abbreviateFirstName(player.name)}
+              <span className="ml-1 text-[10px] text-ink-faint">{expanded ? "▾" : "▸"}</span>
             </div>
             <div className="truncate text-xs text-ink-faint">
               {player.positions.join("/")} - {player.team}
@@ -613,6 +692,110 @@ function RoleRow({
       <td className="px-2 py-2 text-center tabular-nums text-ink">{formatToi(player.toiPerGame)}</td>
       <td className="px-2 py-2 text-center tabular-nums text-ink">{formatToi(player.ppToiPerGame)}</td>
       <td className="px-2 py-2 text-center tabular-nums font-bold text-ink">{formatShare(player.ppShare)}</td>
+    </tr>
+  );
+}
+
+interface GameLineStat<T> {
+  label: string;
+  title: string;
+  value: (l: T) => string;
+  /** Optional second line under the value, e.g. a for-share percentage. */
+  sub?: (l: T) => string;
+}
+
+// Raw totals for the one game.
+const GAME_LINE_STATS: GameLineStat<DeploymentGameLine>[] = [
+  { label: "TOI", title: "Total ice time", value: (l) => formatToi(l.toi) },
+  { label: "PP TOI", title: "Power-play ice time", value: (l) => formatToi(l.ppToi) },
+  { label: "G", title: "Goals", value: (l) => String(l.goals) },
+  { label: "A", title: "Assists", value: (l) => String(l.assists) },
+  { label: "PPP", title: "Power-play points", value: (l) => String(l.ppGoals + l.ppAssists) },
+  { label: "SOG", title: "Shots on goal", value: (l) => String(l.shots) },
+  { label: "iCF", title: "Shot attempts (on goal + missed + blocked)", value: (l) => String(l.icf) },
+  { label: "iSCF", title: "Scoring-chance attempts", value: (l) => String(l.iscf) },
+  { label: "iHDCF", title: "High-danger attempts", value: (l) => String(l.ihdcf) },
+  { label: "ixG", title: "Individual expected goals", value: (l) => l.ixg.toFixed(2) },
+  { label: "Hits", title: "Hits", value: (l) => String(l.hits) },
+  { label: "BLK", title: "Shots blocked", value: (l) => String(l.blocks) },
+  { label: "PIM", title: "Penalty minutes", value: (l) => String(l.pim) },
+];
+
+function forShare(f: number, a: number): string {
+  return f + a > 0 ? `${Math.round((f / (f + a)) * 100)}%` : "-";
+}
+
+function forAgainst(
+  label: string,
+  title: string,
+  f: (l: DeploymentOnIceLine) => number,
+  a: (l: DeploymentOnIceLine) => number,
+  format: (n: number) => string = String
+): GameLineStat<DeploymentOnIceLine> {
+  return {
+    label,
+    title: `${title} for-against while on the ice at 5v5`,
+    value: (l) => `${format(f(l))}-${format(a(l))}`,
+    sub: (l) => forShare(f(l), a(l)),
+  };
+}
+
+const ON_ICE_STATS: GameLineStat<DeploymentOnIceLine>[] = [
+  { label: "5v5 TOI", title: "Ice time at 5v5", value: (l) => formatToi(l.toi) },
+  forAgainst("CF-CA", "Shot attempts", (l) => l.cf, (l) => l.ca),
+  forAgainst("SF-SA", "Shots on goal", (l) => l.sf, (l) => l.sa),
+  forAgainst("xGF-xGA", "Expected goals", (l) => l.xgf, (l) => l.xga, (n) => n.toFixed(2)),
+  forAgainst("SCF-SCA", "Scoring chances", (l) => l.scf, (l) => l.sca),
+  forAgainst("HDCF-HDCA", "High-danger chances", (l) => l.hdcf, (l) => l.hdca),
+  forAgainst("GF-GA", "Goals", (l) => l.gf, (l) => l.ga),
+  {
+    label: "OZ Starts",
+    title: "Offensive-zone vs defensive-zone faceoff shift starts at 5v5 (on-the-fly starts not counted)",
+    value: (l) => `${l.ozStarts}-${l.dzStarts}`,
+    sub: (l) => forShare(l.ozStarts, l.dzStarts),
+  },
+];
+
+function StatStrip<T>({ heading, stats, line }: { heading: string; stats: GameLineStat<T>[]; line: T }) {
+  return (
+    <div>
+      <div className="text-[11px] font-semibold uppercase tracking-wide text-ink-dim">{heading}</div>
+      <div className="mt-1.5 flex flex-wrap gap-x-5 gap-y-2">
+        {stats.map((s) => (
+          <div key={s.label} className="text-center" title={s.title}>
+            <div className="text-[10px] font-semibold uppercase tracking-wide text-ink-faint">{s.label}</div>
+            <div className="tabular-nums font-bold text-ink">{s.value(line)}</div>
+            {s.sub && <div className="text-[10px] tabular-nums text-ink-dim">{s.sub(line)}</div>}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function GameLineRow({ rank, colSpan, state }: { rank: number; colSpan: number; state: GameLineState }) {
+  return (
+    <tr className={`border-b border-stripe ${rank % 2 === 0 ? "bg-stripe/60" : ""}`}>
+      <td colSpan={colSpan} className="px-3 pb-3 pt-1">
+        <div className="rounded border border-line bg-surface px-3 py-2">
+          {state.status === "played" ? (
+            <div className="flex flex-col gap-3">
+              <StatStrip heading="Last Game - Individual (all situations)" stats={GAME_LINE_STATS} line={state.line} />
+              {state.line.onIce5v5 ? (
+                <StatStrip heading="Last Game - On Ice at 5v5" stats={ON_ICE_STATS} line={state.line.onIce5v5} />
+              ) : (
+                <p className="text-xs text-ink-dim">No 5v5 on-ice numbers for this game.</p>
+              )}
+            </div>
+          ) : (
+            <p className="text-xs text-ink-dim">
+              {state.status === "didNotPlay"
+                ? "Didn't play in their team's most recent game."
+                : "Box scores show up after the next stats refresh - use Refresh above, or check back after the daily update."}
+            </p>
+          )}
+        </div>
+      </td>
     </tr>
   );
 }

@@ -29,7 +29,14 @@
 // appeared in a plain unauthenticated fetch, which points to it being
 // gated behind their paid "Frozen Tools" subscription rather than being
 // a scrapeable public page - not pursued further for that reason.)
-import { fetchIndividualStats, currentNstSeason, previousNstSeason, type NstIndividualRow } from "./nst-client";
+import {
+  fetchIndividualStats,
+  fetchOnIceStats,
+  currentNstSeason,
+  previousNstSeason,
+  type NstIndividualRow,
+  type NstOnIceRow,
+} from "./nst-client";
 import { playerIdentityKey, playerNameGroupKey } from "./player-identity-key";
 import { getNstCached, saveNstCached, type NstCached } from "./nst-data-cache";
 import { DEPLOYMENT_ROLE_WINDOWS } from "./deployment-types";
@@ -41,6 +48,7 @@ import type {
   DeploymentRolePlayer,
   DeploymentRolesByWindow,
   DeploymentCacheData,
+  DeploymentGameLine,
 } from "./deployment-types";
 
 // Re-exported so existing server-side imports from "./deployment-service"
@@ -344,13 +352,75 @@ function computeRoles(
     });
 }
 
+/** Every skater's box score from the team's most recent game - the same
+ *  last-1-game reports the deployment comparisons already fetch, plus a
+ *  5v5 on-ice report for that game. Missing from the PP report means no PP
+ *  time (and so no PP points), same as computeDeployment. */
+function computeGameLines(rows: SituationRows, onIce5v5Rows: NstOnIceRow[]): DeploymentGameLine[] {
+  const ppByName = byPlayerKey(rows.ppRows);
+  const onIceByKey = new Map<string, NstOnIceRow>();
+  for (const r of onIce5v5Rows) onIceByKey.set(playerIdentityKey(r.name, r.team, [r.position]), r);
+  return rows.toiRows
+    .filter((r) => r.gp > 0)
+    .map((r) => {
+      const pp = lookupPlayer(ppByName, r.name, r.team, r.position);
+      // Same report, same game, so team+position always line up - no
+      // traded-player fallback needed.
+      const oi = onIceByKey.get(playerIdentityKey(r.name, r.team, [r.position]));
+      return {
+        name: r.name,
+        team: r.team,
+        positions: [r.position],
+        toi: r.toi,
+        ppToi: pp?.toi ?? 0,
+        goals: r.goals,
+        assists: r.assists,
+        ppGoals: pp?.goals ?? 0,
+        ppAssists: pp?.assists ?? 0,
+        shots: r.shots,
+        icf: r.icf,
+        iff: r.iff,
+        iscf: r.iscf,
+        ihdcf: r.ihdcf,
+        ixg: r.ixg,
+        hits: r.hits,
+        blocks: r.blocks,
+        pim: r.pim,
+        onIce5v5: oi
+          ? {
+              toi: oi.toi,
+              cf: oi.cf,
+              ca: oi.ca,
+              sf: oi.sf,
+              sa: oi.sa,
+              gf: oi.gf,
+              ga: oi.ga,
+              xgf: oi.xgf,
+              xga: oi.xga,
+              scf: oi.scf,
+              sca: oi.sca,
+              hdcf: oi.hdcf,
+              hdca: oi.hdca,
+              ozStarts: oi.ozStarts,
+              dzStarts: oi.dzStarts,
+            }
+          : null,
+      };
+    });
+}
+
 /** What every page request calls - never talks to NST directly. Reads the
  *  DB row the daily cron (or the Refresh button) last wrote; only falls
  *  back to a live fetch if that row has genuinely never been seeded yet.
  *  roles is null for a row written before roles (or the current role
- *  windows) existed, until the next refresh rewrites it. */
+ *  windows) existed, until the next refresh rewrites it - lastGame the
+ *  same for rows written before game lines existed. */
 export async function getDeploymentBoosts(): Promise<
-  NstCached<{ baselines: DeploymentBoostsByBaseline; roles: DeploymentRolesByWindow | null }>
+  NstCached<{
+    baselines: DeploymentBoostsByBaseline;
+    roles: DeploymentRolesByWindow | null;
+    lastGame: DeploymentGameLine[] | null;
+  }>
 > {
   const { data, updatedAt } = await getNstCached<DeploymentCacheData | DeploymentBoostsByBaseline>(
     "deployment",
@@ -360,9 +430,12 @@ export async function getDeploymentBoosts(): Promise<
     // A row written before the current set of role windows reads as "no
     // roles yet" until the next refresh, rather than a window with no rows.
     const rolesCurrent = data.roles && DEPLOYMENT_ROLE_WINDOWS.every((w) => Array.isArray(data.roles[w]));
-    return { data: { baselines: data.baselines, roles: rolesCurrent ? data.roles : null }, updatedAt };
+    return {
+      data: { baselines: data.baselines, roles: rolesCurrent ? data.roles : null, lastGame: data.lastGame ?? null },
+      updatedAt,
+    };
   }
-  return { data: { baselines: data, roles: null }, updatedAt };
+  return { data: { baselines: data, roles: null, lastGame: null }, updatedAt };
 }
 
 /** The real live NST fetch + computation - only the cron, the Refresh button
@@ -379,7 +452,7 @@ export async function refreshDeploymentCache(): Promise<NstCached<DeploymentCach
     ]).then(([toiRows, ppRows]) => ({ toiRows, ppRows }));
   }
 
-  const [window1, window2, window3, window4, window5, window10, thisSeasonFull, lastSeasonFull] = await Promise.all([
+  const [window1, window2, window3, window4, window5, window10, thisSeasonFull, lastSeasonFull, onIce1] = await Promise.all([
     fetchGames(1, season, season),
     fetchGames(2, season, season),
     fetchGames(3, season, season), // roles only
@@ -388,6 +461,8 @@ export async function refreshDeploymentCache(): Promise<NstCached<DeploymentCach
     fetchGames(10, season, season), // roles only
     fetchGames(null, season, season),
     fetchGames(null, lastSeason, lastSeason),
+    // Game lines only.
+    fetchOnIceStats({ fromSeason: season, thruSeason: season, gameRange: { type: "teamGames", games: 1 }, situation: "5v5" }),
   ]);
 
   const recent = window1; // always the single most recent game
@@ -434,5 +509,5 @@ export async function refreshDeploymentCache(): Promise<NstCached<DeploymentCach
     thisSeason: computeRoles(thisSeasonFull),
   };
 
-  return saveNstCached("deployment", { baselines, roles });
+  return saveNstCached("deployment", { baselines, roles, lastGame: computeGameLines(window1, onIce1) });
 }
