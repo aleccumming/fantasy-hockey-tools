@@ -37,6 +37,12 @@ export interface SkaterRateStats {
   shootingPct: number;
   onIceShPct: number;
   ipp: number;
+  /** On-ice goals/shots for (all situations) - what oiS% is made of, so
+   *  luck-neutral.ts can reset oiS% even for a player with no on-ice goals
+   *  yet. Optional: stats cached before these were added lack them until
+   *  the next refresh. */
+  onIceGoalsFor?: number;
+  onIceShotsFor?: number;
   /** Share of shot attempts (iCF) that reached the net as shots on goal -
    *  the rest were blocked or missed. Shots on goal are what count in
    *  fantasy, so a dip here vs. baseline means attempts are being wasted,

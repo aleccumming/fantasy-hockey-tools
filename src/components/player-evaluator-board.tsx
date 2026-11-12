@@ -9,6 +9,7 @@ import type { EvaluatorWindow } from "@/lib/player-evaluator-service";
 import { NHL_TEAMS } from "@/lib/schedule";
 import { SkaterRankingsTable, LuckLegend } from "@/components/skater-rankings-table";
 import { PlayerComparisonPanel, type ComparePlayerData } from "@/components/player-comparison-panel";
+import { LuckBoard } from "@/components/luck-board";
 import { PlayerSearchPicker, type PickablePlayer } from "@/components/player-search-picker";
 import { DropReplaceFlow } from "@/components/drop-replace-flow";
 import { TeamMultiSelect } from "@/components/team-multi-select";
@@ -20,7 +21,7 @@ import { applyEligibilityOverrides } from "@/lib/apply-eligibility-overrides";
 import { dedupePlayersAcrossSources, playerNameGroupKey } from "@/lib/player-identity-key";
 import type { Position } from "@/lib/types";
 
-type PageTab = "rankings" | "compare";
+type PageTab = "rankings" | "compare" | "luck";
 type SkaterGroup = "F" | "D";
 type OwnershipFilter = "all" | "unowned";
 
@@ -93,12 +94,21 @@ export function PlayerEvaluatorBoard({ activeLeagueKey }: { activeLeagueKey: str
   // so identity lookup works.
   const overallRank = useMemo(() => new Map(ranked.map((p, i) => [p, i + 1])), [ranked]);
 
-  const filtered = useMemo(() => {
-    const query = nameQuery.trim().toLowerCase();
-    // "Unowned" = actually available per the connected Yahoo league when
-    // one's active; otherwise just "not on my (sample/manual) roster."
+  // "Unowned" = actually available per the connected Yahoo league when
+  // one's active; otherwise just "not on my (sample/manual) roster." Name
+  // + F/D, so the free D Pettersson doesn't make the rostered F Pettersson
+  // look available too.
+  const isUnowned = useMemo(() => {
     const availableSet = yahooFreeAgents ? new Set(yahooFreeAgents.map((fa) => playerNameGroupKey(fa.name, fa.positions))) : null;
     const rosterSet = new Set(roster.map((p) => playerNameGroupKey(p.name, p.positions)));
+    return (p: RankedSkaterStats) => {
+      const key = playerNameGroupKey(p.name, p.positions);
+      return availableSet ? availableSet.has(key) : !rosterSet.has(key);
+    };
+  }, [yahooFreeAgents, roster]);
+
+  const filtered = useMemo(() => {
+    const query = nameQuery.trim().toLowerCase();
     return ranked.filter((p) => {
       if (group === "F" && positionFilters.size > 0 && !p.positions.some((pos) => positionFilters.has(pos))) {
         return false;
@@ -107,12 +117,7 @@ export function PlayerEvaluatorBoard({ activeLeagueKey }: { activeLeagueKey: str
       if (p.toiPerGame < minToi) return false;
       if (isFullSeasonWindow && p.gamesPlayed < minGp) return false;
       if (query && !p.name.toLowerCase().includes(query)) return false;
-      if (ownershipFilter === "unowned") {
-        // Name + F/D, so the free D Pettersson doesn't make the rostered
-        // F Pettersson look available too.
-        const key = playerNameGroupKey(p.name, p.positions);
-        if (availableSet ? !availableSet.has(key) : rosterSet.has(key)) return false;
-      }
+      if (ownershipFilter === "unowned" && !isUnowned(p)) return false;
       return true;
     });
   }, [
@@ -125,8 +130,7 @@ export function PlayerEvaluatorBoard({ activeLeagueKey }: { activeLeagueKey: str
     isFullSeasonWindow,
     nameQuery,
     ownershipFilter,
-    roster,
-    yahooFreeAgents,
+    isUnowned,
   ]);
 
   // Compare tab: independent of Rankings' filters/window - ranks all four
@@ -271,6 +275,19 @@ export function PlayerEvaluatorBoard({ activeLeagueKey }: { activeLeagueKey: str
           >
             Compare
           </button>
+          <button
+            onClick={() => {
+              setPageTab("luck");
+              setDropReplaceOpen(false);
+            }}
+            className={`border-b-2 px-4 py-2 text-sm font-semibold ${
+              pageTab === "luck" && !dropReplaceOpen
+                ? "border-rink-blue text-ink"
+                : "border-transparent text-ink-faint hover:text-ink-dim"
+            }`}
+          >
+            Luck
+          </button>
         </div>
       </div>
 
@@ -283,6 +300,13 @@ export function PlayerEvaluatorBoard({ activeLeagueKey }: { activeLeagueKey: str
             onClose={() => setDropReplaceOpen(false)}
           />
         </div>
+      ) : pageTab === "luck" ? (
+        <LuckBoard
+          rankingsByWindow={rankingsByWindow}
+          headshots={headshots}
+          activeLeagueKey={activeLeagueKey}
+          isUnowned={isUnowned}
+        />
       ) : pageTab === "compare" ? (
         <>
           <div className="mt-4 grid gap-3 sm:grid-cols-2">

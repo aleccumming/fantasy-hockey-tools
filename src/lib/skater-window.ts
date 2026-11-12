@@ -25,6 +25,8 @@ export interface SkaterWindowRow {
   cf: number;
   scf: number;
   xgf: number;
+  gf: number;
+  sf: number;
   onIceShPct: number;
   pim: number;
   hits: number;
@@ -65,6 +67,8 @@ export async function fetchSkaterWindow(opts: NstQueryOptions): Promise<Map<stri
       cf: oi.cf,
       scf: oi.scf,
       xgf: oi.xgf,
+      gf: oi.gf,
+      sf: oi.sf,
       onIceShPct: oi.onIceShPct,
       pim: ind.pim,
       hits: ind.hits,
@@ -113,6 +117,8 @@ export function toSkaterRateStats(
     oixGPer60: toPer60(row.xgf, row.toi),
     shootingPct: row.shPct,
     onIceShPct: row.onIceShPct,
+    onIceGoalsFor: row.gf,
+    onIceShotsFor: row.sf,
     ipp: row.ipp,
     onNetPct: shareOfAttempts(row.shots, row.icf),
     blockedPct: shareOfAttempts(row.icf - row.iff, row.icf),

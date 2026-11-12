@@ -119,13 +119,14 @@ export const RINK_BLUE_RGB = "30, 90, 168";
  *  running cold (could be due for positive regression). No background at
  *  all below the threshold (normal variance). Text switches to white once
  *  the background gets dark enough that dark text stops being readable. */
-export function luckCellStyle(delta: number): { backgroundColor?: string; color?: string } {
+export function luckCellStyle(
+  delta: number,
+  threshold = REGRESSION_THRESHOLD,
+  maxDelta = MAX_LUCK_DELTA
+): { backgroundColor?: string; color?: string } {
   const magnitude = Math.abs(delta);
-  if (magnitude <= REGRESSION_THRESHOLD) return {};
-  const intensity = Math.min(
-    (magnitude - REGRESSION_THRESHOLD) / (MAX_LUCK_DELTA - REGRESSION_THRESHOLD),
-    1
-  );
+  if (magnitude <= threshold) return {};
+  const intensity = Math.min((magnitude - threshold) / (maxDelta - threshold), 1);
   const alpha = 0.12 + intensity * 0.48;
   return {
     backgroundColor: `rgba(${delta > 0 ? RINK_RED_RGB : RINK_BLUE_RGB}, ${alpha.toFixed(2)})`,

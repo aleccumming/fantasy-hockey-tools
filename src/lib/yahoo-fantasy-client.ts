@@ -11,6 +11,7 @@ import { yahooConnections, yahooPlayerEligibilityCache } from "@/db/schema";
 import { refreshYahooToken } from "./yahoo-oauth";
 import type { RosterSlotConfig } from "./roster-fit";
 import type { SkaterPosition } from "./types";
+import type { LeagueSkaterScoring, ScoredSkaterStat } from "./luck-neutral";
 
 const API_BASE = "https://fantasysports.yahooapis.com/fantasy/v2";
 // A token close to expiry might expire mid-request; refresh a bit early.
@@ -149,19 +150,27 @@ function normalizeYahooTeam(team: string): string {
   return YAHOO_TEAM_TO_APP_TEAM[team] ?? team;
 }
 
-const rosterSlotsCache = new Map<string, { data: RosterSlotConfig; expiresAt: number }>();
-const ROSTER_SLOTS_CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6 hours - league settings rarely change mid-season
+const settingsCache = new Map<string, { data: Record<string, unknown>; expiresAt: number }>();
+const SETTINGS_CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6 hours - league settings rarely change mid-season
 
-/** This league's active roster slot counts, shaped for roster-fit.ts -
- *  replaces the hardcoded SAMPLE_ROSTER_SLOTS guess. */
-export async function getLeagueRosterSlots(leagueKey: string, accessToken: string): Promise<RosterSlotConfig> {
-  const cached = rosterSlotsCache.get(leagueKey);
+/** This league's flattened /settings resource - roster slots, roster cap
+ *  and scoring all read from the same response, so it's fetched once. */
+async function getLeagueSettings(leagueKey: string, accessToken: string): Promise<Record<string, unknown>> {
+  const cached = settingsCache.get(leagueKey);
   if (cached && cached.expiresAt > Date.now()) return cached.data;
 
   const json = await yahooGet(`/league/${leagueKey}/settings`, accessToken);
   const leagueArr = (json as { fantasy_content: { league: unknown[] } }).fantasy_content.league;
   const settingsResource = leagueArr[1] as { settings: unknown[] };
   const settings = flattenResource(settingsResource.settings[0]);
+  settingsCache.set(leagueKey, { data: settings, expiresAt: Date.now() + SETTINGS_CACHE_TTL_MS });
+  return settings;
+}
+
+/** This league's active roster slot counts, shaped for roster-fit.ts -
+ *  replaces the hardcoded SAMPLE_ROSTER_SLOTS guess. */
+export async function getLeagueRosterSlots(leagueKey: string, accessToken: string): Promise<RosterSlotConfig> {
+  const settings = await getLeagueSettings(leagueKey, accessToken);
   const rosterPositions = settings.roster_positions as { roster_position: Record<string, unknown> }[];
 
   const slots: RosterSlotConfig = { C: 0, LW: 0, RW: 0, D: 0, UTIL: 0 };
@@ -170,11 +179,8 @@ export async function getLeagueRosterSlots(leagueKey: string, accessToken: strin
     const position = rp.position === "Util" ? "UTIL" : (rp.position as string);
     if (position in slots) slots[position as keyof RosterSlotConfig] = Number(rp.count);
   }
-  rosterSlotsCache.set(leagueKey, { data: slots, expiresAt: Date.now() + ROSTER_SLOTS_CACHE_TTL_MS });
   return slots;
 }
-
-const rosterCapacityCache = new Map<string, { data: number; expiresAt: number }>();
 
 /** This league's total roster size cap - the sum of every roster_position's
  *  count EXCEPT IR/IR+ (Yahoo's convention: an IR+ slot is bonus capacity
@@ -183,22 +189,58 @@ const rosterCapacityCache = new Map<string, { data: number; expiresAt: number }>
  *  you've moved an injured player there). Includes BN and G alongside the
  *  active skater slots, since they all draw from the same shared cap. */
 export async function getLeagueRosterCapacity(leagueKey: string, accessToken: string): Promise<number> {
-  const cached = rosterCapacityCache.get(leagueKey);
-  if (cached && cached.expiresAt > Date.now()) return cached.data;
-
-  const json = await yahooGet(`/league/${leagueKey}/settings`, accessToken);
-  const leagueArr = (json as { fantasy_content: { league: unknown[] } }).fantasy_content.league;
-  const settingsResource = leagueArr[1] as { settings: unknown[] };
-  const settings = flattenResource(settingsResource.settings[0]);
+  const settings = await getLeagueSettings(leagueKey, accessToken);
   const rosterPositions = settings.roster_positions as { roster_position: Record<string, unknown> }[];
 
   const capacity = rosterPositions.reduce((sum, { roster_position: rp }) => {
     const position = String(rp.position);
     return position.startsWith("IR") ? sum : sum + Number(rp.count);
   }, 0);
-
-  rosterCapacityCache.set(leagueKey, { data: capacity, expiresAt: Date.now() + ROSTER_SLOTS_CACHE_TTL_MS });
   return capacity;
+}
+
+// Yahoo skater categories this app has data for, by Yahoo's display_name.
+// Everything else a league might score (PPP, +/-, FW, GWG...) isn't in the
+// NST data, so it's reported back as unsupported rather than guessed at.
+const YAHOO_STAT_TO_SCORED_STAT: Record<string, ScoredSkaterStat> = {
+  G: "goals",
+  A: "assists",
+  P: "points",
+  SOG: "shots",
+  HIT: "hits",
+  BLK: "blocks",
+  PIM: "pim",
+};
+
+/** This league's skater scoring weights. A categories league has no
+ *  stat_modifiers at all - that comes back as kind "categories" so callers
+ *  can fall back to plain points. Not yet verified against a live
+ *  response (Yahoo login doesn't work locally), so anything unexpected is
+ *  logged and treated as a categories league instead of throwing. */
+export async function getLeagueSkaterScoring(leagueKey: string, accessToken: string): Promise<LeagueSkaterScoring> {
+  const settings = await getLeagueSettings(leagueKey, accessToken);
+  type StatEntry = { stat: Record<string, unknown> };
+  const categories = (settings.stat_categories as { stats?: StatEntry[] } | undefined)?.stats ?? [];
+  const modifiers = (settings.stat_modifiers as { stats?: StatEntry[] } | undefined)?.stats ?? [];
+  if (modifiers.length === 0) {
+    if (!settings.stat_categories) console.warn(`League ${leagueKey} settings had no stat_categories`, Object.keys(settings));
+    return { kind: "categories", weights: {}, unsupported: [] };
+  }
+
+  const categoryById = new Map(categories.map(({ stat }) => [String(stat.stat_id), stat]));
+  const weights: LeagueSkaterScoring["weights"] = {};
+  const unsupported: string[] = [];
+  for (const { stat } of modifiers) {
+    const category = categoryById.get(String(stat.stat_id));
+    const value = Number(stat.value);
+    // Goalie categories (W, SV, GA...) are position_type "G".
+    if (!category || category.position_type !== "P" || !value) continue;
+    const displayName = String(category.display_name);
+    const key = YAHOO_STAT_TO_SCORED_STAT[displayName];
+    if (key) weights[key] = value;
+    else unsupported.push(displayName);
+  }
+  return { kind: "points", weights, unsupported };
 }
 
 export interface YahooRosterPlayer {
